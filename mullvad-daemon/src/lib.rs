@@ -1048,6 +1048,7 @@ where
                         let result = self
                             .create_tunnel_parameters(
                                 &exit_relay,
+                                &entry_relay,
                                 endpoint,
                                 device.token,
                                 retry_attempt,
@@ -1089,6 +1090,7 @@ where
     async fn create_tunnel_parameters(
         &mut self,
         relay: &Relay,
+        entry_relay: &Option<Relay>,
         endpoint: MullvadEndpoint,
         account_token: String,
         retry_attempt: u32,
@@ -1179,7 +1181,7 @@ where
                     Some(settings) => {
                         let obfuscator = self
                             .relay_selector
-                            .get_obfuscator(&settings, relay, &endpoint, retry_attempt)
+                            .get_obfuscator(&settings, entry_relay.as_ref().unwrap_or(relay), &endpoint, retry_attempt)
                             .ok_or(Error::NoObfuscator)?;
                         Some(obfuscator)
                     },
