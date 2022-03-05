@@ -36,15 +36,15 @@ impl Command for Obfuscation {
 impl Obfuscation {
     async fn handle_set(matches: &clap::ArgMatches) -> Result<()> {
         match matches.subcommand() {
-            Some(("type", type_matches)) => {
-                let obfuscator_type = type_matches.value_of("type").unwrap();
+            Some(("mode", type_matches)) => {
+                let obfuscator_type = type_matches.value_of("mode").unwrap();
                 let mut rpc = new_rpc_client().await?;
                 let mut settings = Self::get_obfuscation_settings(&mut rpc).await?;
                 settings.selected_obfuscation = match obfuscator_type {
                     "auto" => SelectedObfuscation::Auto,
                     "off" => SelectedObfuscation::Off,
                     "udp2tcp" => SelectedObfuscation::Udp2Tcp,
-                    _ => unreachable!("Unhandled obfuscator type"),
+                    _ => unreachable!("Unhandled obfuscator mode"),
                 };
                 Self::set_obfuscation_settings(&mut rpc, &settings).await?;
             }
@@ -102,12 +102,12 @@ fn create_obfuscation_set_subcommand() -> clap::App<'static> {
         .about("Set obfuscation settings")
         .setting(clap::AppSettings::SubcommandRequiredElseHelp)
         .subcommand(
-            clap::App::new("type").about("Set obfuscation type").arg(
-                clap::Arg::new("type")
+            clap::App::new("mode").about("Set obfuscation mode").arg(
+                clap::Arg::new("mode")
                     .help("Specifies what kind of obfuscation should be used, if any")
                     .required(true)
                     .index(1)
-                    .possible_values(&["auto", "off", "udp2tcp"]), // TODO "type off" is weird
+                    .possible_values(&["auto", "off", "udp2tcp"]),
             ),
         )
         .subcommand(
