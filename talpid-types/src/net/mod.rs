@@ -72,9 +72,6 @@ impl TunnelParameters {
                 address: *endpoint,
                 protocol: TransportProtocol::Tcp,
             },
-            _ => {
-                unreachable!("Handle all obfuscators");
-            },
         }
     }
 

@@ -178,9 +178,6 @@ fn maybe_create_obfuscator(
                 runtime.spawn(runner);
                 return Ok(Some(ObfuscatorHandle::new(abort_handle)));
             },
-            _ => {
-                unreachable!("TODO: Handle all obfuscators");
-            },
         }
     }
     Ok(None)

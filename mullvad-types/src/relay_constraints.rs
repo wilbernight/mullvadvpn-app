@@ -9,9 +9,9 @@ use crate::{
 #[cfg(target_os = "android")]
 use jnix::{FromJava, IntoJava};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, fmt, net::SocketAddr};
+use std::{collections::HashSet, fmt};
 use talpid_types::net::{
-    obfuscation, openvpn::ProxySettings, IpVersion, TransportProtocol, TunnelType,
+    openvpn::ProxySettings, IpVersion, TransportProtocol, TunnelType,
 };
 
 pub trait Match<T> {
@@ -468,43 +468,58 @@ pub enum BridgeSettings {
     Custom(ProxySettings),
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SelectedObfuscation {
+    Auto,
+    Off,
+    Udp2Tcp,
+}
+
+impl Default for SelectedObfuscation {
+    fn default() -> Self {
+        SelectedObfuscation::Auto
+    }
+}
+
+impl fmt::Display for SelectedObfuscation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                SelectedObfuscation::Auto => "auto",
+                SelectedObfuscation::Off => "off",
+                SelectedObfuscation::Udp2Tcp => "udp2tcp",
+            }
+        )
+    }
+}
+
+#[derive(Default, Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct Udp2TcpObfuscationSettings {
+    pub port: Constraint<u16>,
+}
+
 /// Contains obfuscation settings
 #[derive(Default, Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct ObfuscationSettings {
-    pub active_obfuscator: Option<obfuscation::ObfuscatorType>,
-    pub custom_obfuscator_settings: Option<CustomObfuscatorSettings>,
+    pub selected_obfuscation: SelectedObfuscation,
+    pub udp2tcp: Udp2TcpObfuscationSettings,
 }
 
 impl fmt::Display for ObfuscationSettings {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        use obfuscation::ObfuscatorType::*;
         write!(f, "Currently using ")?;
-        match self.active_obfuscator {
-            None => write!(f, "no obfuscator.")?,
-            Some(Udp2Tcp) => write!(f, "udp2tcp obfuscator.")?,
-            Some(Mock) => write!(f, "mock obfuscator.")?,
-            Some(Custom) => write!(f, "custom obfuscator.")?,
+        match self.selected_obfuscation {
+            SelectedObfuscation::Auto => write!(f, "automatic selection of obfuscator.")?,
+            SelectedObfuscation::Off => write!(f, "no obfuscator.")?,
+            SelectedObfuscation::Udp2Tcp => write!(f, "udp2tcp obfuscator.")?,
         };
-
-        if let Some(custom_settings) = &self.custom_obfuscator_settings {
-            write!(
-                f,
-                " Custom obfuscator will connect to {} and try to reach {}.",
-                custom_settings.address, custom_settings.endpoint
-            )?;
-        }
         Ok(())
     }
-}
-
-
-/// Contains config for custom obfuscator
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub struct CustomObfuscatorSettings {
-    pub address: SocketAddr,
-    pub endpoint: SocketAddr,
 }
 
 /// Limits the set of bridge servers to use in `mullvad-daemon`.

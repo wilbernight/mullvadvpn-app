@@ -42,7 +42,7 @@ use mullvad_types::{
     location::{Coordinates, GeoIpLocation},
     relay_constraints::{
         BridgeSettings, BridgeState, Constraint, InternalBridgeConstraints, ObfuscationSettings,
-        RelaySettings, RelaySettingsUpdate,
+        RelaySettings, RelaySettingsUpdate, SelectedObfuscation
     },
     relay_list::{Relay, RelayList},
     settings::{DnsOptions, DnsState, Settings},
@@ -1177,17 +1177,25 @@ where
                     ],
                 };
 
-                let obfuscation = match self.settings.get_obfuscation_settings() {
-                    Some(settings) => {
-                        let obfuscator = self
+                let obfuscation = match self.settings.obfuscation_settings.selected_obfuscation {
+                    SelectedObfuscation::Off | SelectedObfuscation::Auto
+                        if !self
                             .relay_selector
-                            .get_obfuscator(&settings, entry_relay.as_ref().unwrap_or(relay), &endpoint, retry_attempt)
+                            .should_use_auto_obfuscator(retry_attempt) =>
+                    {
+                        None
+                    }
+                    _ => {
+                        let obfuscator = self.relay_selector
+                            .get_obfuscator(
+                                &self.settings.obfuscation_settings,
+                                entry_relay.as_ref().unwrap_or(relay),
+                                &endpoint,
+                                retry_attempt,
+                            )
                             .ok_or(Error::NoObfuscator)?;
                         Some(obfuscator)
-                    },
-                    _ => {
-                        None
-                    },
+                    }
                 };
 
                 Ok(wireguard::TunnelParameters {
@@ -1200,7 +1208,7 @@ where
                     },
                     options: tunnel_options.wireguard.options,
                     generic_options: tunnel_options.generic,
-                    obfuscation: obfuscation,
+                    obfuscation,
                 }
                 .into())
             }

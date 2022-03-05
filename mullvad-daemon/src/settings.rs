@@ -332,16 +332,6 @@ impl SettingsPersister {
         self.update(should_save).await
     }
 
-    // TODO: Correct this function when source data type is updated.
-    pub fn get_obfuscation_settings(
-        &self,
-    ) -> Option<ObfuscationSettings> {
-        if self.settings.obfuscation_settings.active_obfuscator.is_some() {
-            return Some(self.settings.obfuscation_settings.clone());
-        }
-        None
-    }
-
     async fn update(&mut self, should_save: bool) -> Result<bool, Error> {
         if should_save {
             self.save().await.map(|_| true)

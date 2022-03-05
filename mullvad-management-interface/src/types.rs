@@ -451,30 +451,25 @@ impl From<mullvad_types::relay_constraints::BridgeState> for BridgeState {
 
 impl From<&mullvad_types::relay_constraints::ObfuscationSettings> for ObfuscationSettings {
     fn from(settings: &mullvad_types::relay_constraints::ObfuscationSettings) -> Self {
-        use talpid_types::net::obfuscation::ObfuscatorType;
-        let active_obfuscator = i32::from(match settings.active_obfuscator {
-            Some(ObfuscatorType::Mock) => obfuscation_settings::ActiveObfuscator::Mock,
-            Some(ObfuscatorType::Udp2Tcp) => obfuscation_settings::ActiveObfuscator::Udp2tcp,
-            Some(ObfuscatorType::Custom) => obfuscation_settings::ActiveObfuscator::Custom,
-            None => obfuscation_settings::ActiveObfuscator::None,
+        use mullvad_types::relay_constraints::SelectedObfuscation;
+        let selected_obfuscation = i32::from(match settings.selected_obfuscation {
+            SelectedObfuscation::Auto => obfuscation_settings::SelectedObfuscation::Auto,
+            SelectedObfuscation::Off => obfuscation_settings::SelectedObfuscation::Off,
+            SelectedObfuscation::Udp2Tcp => obfuscation_settings::SelectedObfuscation::Udp2tcp,
         });
         Self {
-            active_obfuscator,
-            custom_obfuscator_settings: settings
-                .custom_obfuscator_settings
-                .as_ref()
-                .map(CustomObfuscatorSettings::from),
+            selected_obfuscation,
+            udp2tcp: Some(Udp2TcpObfuscationSettings::from(&settings.udp2tcp)),
         }
     }
 }
 
-impl From<&mullvad_types::relay_constraints::CustomObfuscatorSettings>
-    for CustomObfuscatorSettings
+impl From<&mullvad_types::relay_constraints::Udp2TcpObfuscationSettings>
+    for Udp2TcpObfuscationSettings
 {
-    fn from(settings: &mullvad_types::relay_constraints::CustomObfuscatorSettings) -> Self {
+    fn from(settings: &mullvad_types::relay_constraints::Udp2TcpObfuscationSettings) -> Self {
         Self {
-            address: settings.address.to_string(),
-            endpoint: settings.endpoint.to_string(),
+            port: u32::from(settings.port.unwrap_or(0)),
         }
     }
 }
@@ -1233,48 +1228,48 @@ impl TryFrom<ObfuscationSettings> for mullvad_types::relay_constraints::Obfuscat
     type Error = FromProtobufTypeError;
 
     fn try_from(settings: ObfuscationSettings) -> Result<Self, Self::Error> {
-        use obfuscation_settings::ActiveObfuscator;
-        use talpid_types::net::obfuscation::ObfuscatorType;
-        let active_obfuscator = match ActiveObfuscator::from_i32(settings.active_obfuscator) {
-            Some(ActiveObfuscator::None) => None,
-            Some(ActiveObfuscator::Mock) => Some(ObfuscatorType::Mock),
-            Some(ActiveObfuscator::Udp2tcp) => Some(ObfuscatorType::Udp2Tcp),
-            Some(ActiveObfuscator::Custom) => Some(ObfuscatorType::Custom),
+        use obfuscation_settings::SelectedObfuscation as IpcSelectedObfuscation;
+        use mullvad_types::relay_constraints::SelectedObfuscation;
+        let selected_obfuscation =
+            match IpcSelectedObfuscation::from_i32(settings.selected_obfuscation) {
+                Some(IpcSelectedObfuscation::Auto) => SelectedObfuscation::Auto,
+                Some(IpcSelectedObfuscation::Off) => SelectedObfuscation::Off,
+                Some(IpcSelectedObfuscation::Udp2tcp) => SelectedObfuscation::Udp2Tcp,
+                None => {
+                    return Err(FromProtobufTypeError::InvalidArgument(
+                        "invalid selected obfuscator",
+                    ));
+                }
+            };
+
+        let udp2tcp = match settings.udp2tcp {
+            Some(settings) => mullvad_types::relay_constraints::Udp2TcpObfuscationSettings::try_from(&settings)?,
             None => {
                 return Err(FromProtobufTypeError::InvalidArgument(
-                    "invalid active obfuscator",
+                    "invalid selected obfuscator",
                 ));
             }
         };
 
-        let custom_obfuscator_settings = match settings.custom_obfuscator_settings {
-            Some(settings) => Some(
-                mullvad_types::relay_constraints::CustomObfuscatorSettings::try_from(settings)?,
-            ),
-            None => None,
-        };
         Ok(Self {
-            active_obfuscator,
-            custom_obfuscator_settings,
+            selected_obfuscation,
+            udp2tcp,
         })
     }
 }
 
-impl TryFrom<CustomObfuscatorSettings>
-    for mullvad_types::relay_constraints::CustomObfuscatorSettings
+impl TryFrom<&Udp2TcpObfuscationSettings>
+    for mullvad_types::relay_constraints::Udp2TcpObfuscationSettings
 {
     type Error = FromProtobufTypeError;
 
-    fn try_from(settings: CustomObfuscatorSettings) -> Result<Self, Self::Error> {
+    fn try_from(settings: &Udp2TcpObfuscationSettings) -> Result<Self, Self::Error> {
         Ok(Self {
-            address: settings
-                .address
-                .parse()
-                .map_err(|_| FromProtobufTypeError::InvalidArgument("invalid socket address"))?,
-            endpoint: settings
-                .endpoint
-                .parse()
-                .map_err(|_| FromProtobufTypeError::InvalidArgument("invalid socket address"))?,
+            port: if settings.port == 0 {
+                Constraint::Any
+            } else {
+                Constraint::Only(settings.port as u16)
+            },
         })
     }
 }

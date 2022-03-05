@@ -2,7 +2,9 @@ use crate::{new_rpc_client, Command, Result};
 
 use mullvad_management_interface::{types as grpc_types, ManagementServiceClient};
 
-use mullvad_types::relay_constraints::{CustomObfuscatorSettings, ObfuscationSettings};
+use mullvad_types::relay_constraints::{
+    ObfuscationSettings, SelectedObfuscation,
+};
 
 use std::convert::TryFrom;
 
@@ -33,43 +35,30 @@ impl Command for Obfuscation {
 
 impl Obfuscation {
     async fn handle_set(matches: &clap::ArgMatches) -> Result<()> {
-        use talpid_types::net::obfuscation::ObfuscatorType::*;
         match matches.subcommand() {
             Some(("type", type_matches)) => {
                 let obfuscator_type = type_matches.value_of("type").unwrap();
                 let mut rpc = new_rpc_client().await?;
                 let mut settings = Self::get_obfuscation_settings(&mut rpc).await?;
-                settings.active_obfuscator = match obfuscator_type {
-                    "none" => None,
-                    "mock" => Some(Mock),
-                    "udp2tcp" => Some(Udp2Tcp),
-                    "custom" => Some(Custom),
+                settings.selected_obfuscation = match obfuscator_type {
+                    "auto" => SelectedObfuscation::Auto,
+                    "off" => SelectedObfuscation::Off,
+                    "udp2tcp" => SelectedObfuscation::Udp2Tcp,
                     _ => unreachable!("Unhandled obfuscator type"),
                 };
-                if settings.active_obfuscator == Some(Custom)
-                    && settings.custom_obfuscator_settings.is_none()
-                {
-                    eprintln!(
-                        "Set custom obfuscator settings before enabling the custom obfuscator"
-                    );
-                    std::process::exit(1);
-                }
                 Self::set_obfuscation_settings(&mut rpc, &settings).await?;
             }
-            Some(("custom-settings", custom_settings)) => {
-                let address = custom_settings.value_of_t_or_exit("address");
-                // value_t!(custom_settings.value_of("address"), SocketAddr)
-                //     .unwrap_or_else(|e| e.exit());
-                let endpoint = custom_settings.value_of_t_or_exit("endpoint");
-                // value_t!(custom_settings.value_of("endpoint"), SocketAddr)
-                //     .unwrap_or_else(|e| e.exit());
-
+            Some(("udp2tcp-settings", settings_matches)) => {
+                let port: String = settings_matches.value_of_t_or_exit("port");
                 let mut rpc = new_rpc_client().await?;
                 let mut settings = Self::get_obfuscation_settings(&mut rpc).await?;
-
-                settings.custom_obfuscator_settings =
-                    Some(CustomObfuscatorSettings { address, endpoint });
-
+                settings.udp2tcp.port = if port == "any" {
+                    mullvad_types::relay_constraints::Constraint::Any
+                } else {
+                    mullvad_types::relay_constraints::Constraint::Only(
+                        port.parse::<u16>().expect("Invalid port number"),
+                    )
+                };
                 Self::set_obfuscation_settings(&mut rpc, &settings).await?;
             }
             _ => unreachable!("unhandled command"),
@@ -113,31 +102,23 @@ fn create_obfuscation_set_subcommand() -> clap::App<'static> {
         .about("Set obfuscation settings")
         .setting(clap::AppSettings::SubcommandRequiredElseHelp)
         .subcommand(
-            clap::App::new("type")
-                .about("Set obfuscation type")
-                .arg(
-                    clap::Arg::new("type")
-                        .help("Specifies what kind of obfuscation should be used, if any")
-                        .required(true)
-                        .index(1)
-                        .possible_values(&["none", "mock", "udp2tcp", "custom"]),
-                ),
+            clap::App::new("type").about("Set obfuscation type").arg(
+                clap::Arg::new("type")
+                    .help("Specifies what kind of obfuscation should be used, if any")
+                    .required(true)
+                    .index(1)
+                    .possible_values(&["auto", "off", "udp2tcp"]), // TODO "type off" is weird
+            ),
         )
         .subcommand(
-            clap::App::new("custom-settings")
-                .about("Specifies the config for a custom obfuscator")
+            clap::App::new("udp2tcp-settings")
+                .about("Specifies the config for the udp2tcp obfuscator")
                 .arg(
-                    clap::Arg::new("address")
-                        .help("Address to which tunnel data will be sent")
+                    clap::Arg::new("port")
+                        .help("TCP port of remote endpoint")
                         .required(true)
                         .index(1),
                 )
-                .arg(
-                    clap::Arg::new("remote-endpoint")
-                        .help("Address of remote endpoint that will be used")
-                        .required(true)
-                        .index(2),
-                ),
         )
 }
 
