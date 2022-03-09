@@ -1,5 +1,6 @@
 #[cfg(target_os = "android")]
 use jnix::IntoJava;
+use obfuscation::ObfuscatorConfig;
 use serde::{Deserialize, Serialize};
 #[cfg(windows)]
 use std::path::PathBuf;
@@ -8,7 +9,6 @@ use std::{
     net::{IpAddr, SocketAddr},
     str::FromStr,
 };
-use obfuscation::ObfuscatorConfig;
 
 pub mod obfuscation;
 pub mod openvpn;
@@ -31,6 +31,7 @@ impl TunnelParameters {
                 tunnel_type: TunnelType::OpenVpn,
                 endpoint: params.config.endpoint,
                 proxy: params.proxy.as_ref().map(|proxy| proxy.get_endpoint()),
+                obfuscation: None,
                 entry_endpoint: None,
             },
             TunnelParameters::Wireguard(params) => TunnelEndpoint {
@@ -40,6 +41,10 @@ impl TunnelParameters {
                     .get_exit_endpoint()
                     .unwrap_or(params.connection.get_endpoint()),
                 proxy: None,
+                obfuscation: params
+                    .obfuscation
+                    .as_ref()
+                    .map(|obfs| ObfuscationEndpoint::from(obfs)),
                 entry_endpoint: params
                     .connection
                     .get_exit_endpoint()
@@ -56,19 +61,17 @@ impl TunnelParameters {
                 .as_ref()
                 .map(|proxy| proxy.get_endpoint().endpoint)
                 .unwrap_or(params.config.endpoint),
-            TunnelParameters::Wireguard(params) => {
-                params
+            TunnelParameters::Wireguard(params) => params
                 .obfuscation
                 .as_ref()
                 .map(|obfuscator| Self::get_obfuscator_endpoint(obfuscator))
-                .unwrap_or(params.connection.get_endpoint())
-            }
+                .unwrap_or(params.connection.get_endpoint()),
         }
     }
 
     fn get_obfuscator_endpoint(obfuscator: &ObfuscatorConfig) -> Endpoint {
         match obfuscator {
-            ObfuscatorConfig::Udp2Tcp{endpoint} => Endpoint {
+            ObfuscatorConfig::Udp2Tcp { endpoint } => Endpoint {
                 address: *endpoint,
                 protocol: TransportProtocol::Tcp,
             },
@@ -136,6 +139,8 @@ pub struct TunnelEndpoint {
     #[cfg_attr(target_os = "android", jnix(skip))]
     pub proxy: Option<proxy::ProxyEndpoint>,
     #[cfg_attr(target_os = "android", jnix(skip))]
+    pub obfuscation: Option<ObfuscationEndpoint>,
+    #[cfg_attr(target_os = "android", jnix(skip))]
     pub entry_endpoint: Option<Endpoint>,
 }
 
@@ -156,8 +161,60 @@ impl fmt::Display for TunnelEndpoint {
                 if let Some(ref entry_endpoint) = self.entry_endpoint {
                     write!(f, " via {}", entry_endpoint)?;
                 }
+                if let Some(ref obfuscation) = self.obfuscation {
+                    write!(f, " via {}", obfuscation)?;
+                }
             }
         }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename = "obfuscation_type")]
+pub enum ObfuscationType {
+    #[serde(rename = "udp2tcp")]
+    Udp2Tcp,
+}
+
+impl fmt::Display for ObfuscationType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        let obfuscation = match self {
+            ObfuscationType::Udp2Tcp => "Udp2Tcp",
+        };
+        write!(f, "{}", obfuscation)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename = "obfuscation_endpoint")]
+pub struct ObfuscationEndpoint {
+    pub endpoint: Endpoint,
+    pub obfuscation_type: ObfuscationType,
+}
+
+impl From<&ObfuscatorConfig> for ObfuscationEndpoint {
+    fn from(config: &ObfuscatorConfig) -> ObfuscationEndpoint {
+        let (endpoint, obfuscation_type) = match config {
+            ObfuscatorConfig::Udp2Tcp { endpoint } => (
+                Endpoint {
+                    address: *endpoint,
+                    protocol: TransportProtocol::Tcp,
+                },
+                ObfuscationType::Udp2Tcp,
+            ),
+        };
+
+        ObfuscationEndpoint {
+            endpoint,
+            obfuscation_type,
+        }
+    }
+}
+
+impl fmt::Display for ObfuscationEndpoint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "{} {}", self.obfuscation_type, self.endpoint)?;
         Ok(())
     }
 }

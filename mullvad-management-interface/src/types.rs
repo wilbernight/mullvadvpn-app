@@ -42,6 +42,15 @@ impl From<talpid_types::net::TunnelEndpoint> for TunnelEndpoint {
                     net::proxy::ProxyType::Custom => i32::from(ProxyType::Custom),
                 },
             }),
+            obfuscation: endpoint.obfuscation.map(|obfuscation_endpoint| ObfuscationEndpoint {
+                    address: obfuscation_endpoint.endpoint.address.ip().to_string(),
+                    port: u32::from(obfuscation_endpoint.endpoint.address.port()),
+                    protocol: i32::from(TransportProtocol::from(obfuscation_endpoint.endpoint.protocol)),
+                    obfuscation_type: match obfuscation_endpoint.obfuscation_type {
+                        net::ObfuscationType::Udp2Tcp => i32::from(ObfuscationType::Udp2tcp)
+                    },
+                }
+            ),
             entry_endpoint: endpoint.entry_endpoint.map(|entry| Endpoint {
                 address: entry.address.to_string(),
                 protocol: i32::from(TransportProtocol::from(entry.protocol)),

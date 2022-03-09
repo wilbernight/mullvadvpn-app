@@ -191,7 +191,19 @@ message TunnelEndpoint {
 	TransportProtocol protocol = 2;
 	TunnelType tunnel_type = 3;
 	ProxyEndpoint proxy = 4;
-	Endpoint entry_endpoint = 5;
+	ObfuscationEndpoint obfuscation = 5;
+	Endpoint entry_endpoint = 6;
+}
+
+enum ObfuscationType {
+	UDP2TCP = 0;
+}
+
+message ObfuscationEndpoint {
+	string address = 1;
+	uint32 port = 2;
+	TransportProtocol protocol = 3;
+	ObfuscationType obfuscation_type = 4;
 }
 
 enum ProxyType {
