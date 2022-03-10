@@ -502,6 +502,16 @@ pub struct Udp2TcpObfuscationSettings {
     pub port: Constraint<u16>,
 }
 
+impl fmt::Display for Udp2TcpObfuscationSettings {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "port: {}", match self.port {
+            Constraint::Any => "any".to_string(),
+            Constraint::Only(port) => port.to_string(),
+        })?;
+        Ok(())
+    }
+}
+
 /// Contains obfuscation settings
 #[derive(Default, Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -512,11 +522,11 @@ pub struct ObfuscationSettings {
 
 impl fmt::Display for ObfuscationSettings {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(f, "Currently using ")?;
+        write!(f, "selected obfuscation: ")?;
         match self.selected_obfuscation {
-            SelectedObfuscation::Auto => write!(f, "automatic selection of obfuscator.")?,
-            SelectedObfuscation::Off => write!(f, "no obfuscator.")?,
-            SelectedObfuscation::Udp2Tcp => write!(f, "udp2tcp obfuscator.")?,
+            SelectedObfuscation::Auto => write!(f, "auto")?,
+            SelectedObfuscation::Off => write!(f, "off")?,
+            SelectedObfuscation::Udp2Tcp => write!(f, "Udp2Tcp ({})", self.udp2tcp)?,
         };
         Ok(())
     }

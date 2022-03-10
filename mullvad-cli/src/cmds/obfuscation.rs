@@ -25,7 +25,7 @@ impl Command for Obfuscation {
     async fn run(&self, matches: &clap::ArgMatches) -> Result<()> {
         match matches.subcommand() {
             Some(("set", set_matches)) => Self::handle_set(set_matches).await,
-            Some(("get", _)) => Self::handle_get().await,
+            Some(("get", get_matches)) => Self::handle_get(get_matches).await,
             _ => unreachable!("unhandled command"),
         }
     }
@@ -34,8 +34,8 @@ impl Command for Obfuscation {
 impl Obfuscation {
     async fn handle_set(matches: &clap::ArgMatches) -> Result<()> {
         match matches.subcommand() {
-            Some(("mode", type_matches)) => {
-                let obfuscator_type = type_matches.value_of("mode").unwrap();
+            Some(("mode", mode_matches)) => {
+                let obfuscator_type = mode_matches.value_of("mode").unwrap();
                 let mut rpc = new_rpc_client().await?;
                 let mut settings = Self::get_obfuscation_settings(&mut rpc).await?;
                 settings.selected_obfuscation = match obfuscator_type {
@@ -64,10 +64,13 @@ impl Obfuscation {
         Ok(())
     }
 
-    async fn handle_get() -> Result<()> {
+    async fn handle_get(matches: &clap::ArgMatches) -> Result<()> {
         let mut rpc = new_rpc_client().await?;
         let settings = Self::get_obfuscation_settings(&mut rpc).await?;
-        println!("{}", settings);
+        match matches.subcommand() {
+            Some(("udp2tcp-settings", _)) => println!("Udp2Tcp: {}", settings.udp2tcp),
+            _ => println!("Current settings: {}", settings),
+        }
         Ok(())
     }
 
@@ -121,5 +124,9 @@ fn create_obfuscation_set_subcommand() -> clap::App<'static> {
 }
 
 fn create_obfuscation_get_subcommand() -> clap::App<'static> {
-    clap::App::new("get").about("Get obfuscation settings")
+    clap::App::new("get")
+        .about("Get obfuscation settings")
+        .subcommand(clap::App::new("udp2tcp-settings")
+            .about("Specifies the config for the udp2tcp obfuscator")
+        )
 }
