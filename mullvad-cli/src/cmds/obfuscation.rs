@@ -2,9 +2,7 @@ use crate::{new_rpc_client, Command, Result};
 
 use mullvad_management_interface::{types as grpc_types, ManagementServiceClient};
 
-use mullvad_types::relay_constraints::{
-    ObfuscationSettings, SelectedObfuscation,
-};
+use mullvad_types::relay_constraints::{ObfuscationSettings, SelectedObfuscation};
 
 use std::convert::TryFrom;
 
@@ -113,12 +111,12 @@ fn create_obfuscation_set_subcommand() -> clap::App<'static> {
         .subcommand(
             clap::App::new("udp2tcp-settings")
                 .about("Specifies the config for the udp2tcp obfuscator")
-                .arg(
-                    clap::Arg::new("port")
-                        .help("TCP port of remote endpoint")
-                        .required(true)
-                        .index(1),
-                )
+                .setting(clap::AppSettings::ArgRequiredElseHelp)
+                .arg(clap::Arg::new("port")
+                    .help("TCP port of remote endpoint. Either 'any' or a specific port")
+                    .long("port")
+                    .takes_value(true),
+                ),
         )
 }
 
