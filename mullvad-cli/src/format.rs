@@ -5,7 +5,7 @@ use mullvad_management_interface::types::{
     },
     tunnel_state,
     tunnel_state::State::*,
-    ErrorState, KeygenEvent, ObfuscationType, ProxyType, TransportProtocol, TunnelEndpoint,
+    ErrorState, ObfuscationType, ProxyType, TransportProtocol, TunnelEndpoint,
     TunnelState, TunnelType,
 };
 use mullvad_types::auth_failed::AuthFailed;

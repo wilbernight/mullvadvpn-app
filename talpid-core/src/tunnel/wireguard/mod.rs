@@ -22,7 +22,7 @@ use std::env;
 use std::io;
 use std::{
     convert::Infallible,
-    net::{IpAddr, SocketAddr},
+    net::IpAddr,
     path::Path,
     sync::{mpsc as sync_mpsc, Arc, Mutex},
 };
