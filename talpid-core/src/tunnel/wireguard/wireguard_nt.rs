@@ -982,7 +982,7 @@ impl Tunnel for WgNtTunnel {
 mod tests {
     use super::*;
     use lazy_static::lazy_static;
-    use talpid_types::net::{wireguard, TransportProtocol};
+    use talpid_types::net::wireguard;
 
     #[derive(Debug, Eq, PartialEq, Clone, Copy)]
     #[repr(C)]
@@ -1006,7 +1006,6 @@ mod tests {
                     public_key: WG_PUBLIC_KEY.clone(),
                     allowed_ips: vec!["1.3.3.0/24".parse().unwrap()],
                     endpoint: "1.2.3.4:1234".parse().unwrap(),
-                    protocol: TransportProtocol::Udp,
                 }],
                 ipv4_gateway: "0.0.0.0".parse().unwrap(),
                 ipv6_gateway: None,

@@ -1159,12 +1159,14 @@ mod test {
                                                 ipv4_gateway: "10.64.0.1".parse().unwrap(),
                                                 ipv6_gateway: "fc00:bbbb:bbbb:bb01::1".parse().unwrap(),
                                                 public_key: PublicKey::from_base64("veGD6/aEY6sMfN3Ls7YWPmNgu3AheO7nQqsFT47YSws=").unwrap(),
-                                                protocol: TransportProtocol::Udp,
                                             },
                                         ],
                                     },
                                     bridges: RelayBridges {
                                         shadowsocks: vec![],
+                                    },
+                                    obfuscators: RelayObfuscators {
+                                        udp2tcp: vec![],
                                     },
                                     location: None,
                                 },
@@ -1186,6 +1188,9 @@ mod test {
                                     },
                                     bridges: RelayBridges {
                                         shadowsocks: vec![],
+                                    },
+                                    obfuscators: RelayObfuscators {
+                                        udp2tcp: vec![],
                                     },
                                     location: None,
                                 }
