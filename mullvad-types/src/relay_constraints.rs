@@ -515,6 +515,7 @@ impl fmt::Display for Udp2TcpObfuscationSettings {
 /// Contains obfuscation settings
 #[derive(Default, Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
+#[serde(default)]
 pub struct ObfuscationSettings {
     pub selected_obfuscation: SelectedObfuscation,
     pub udp2tcp: Udp2TcpObfuscationSettings,
