@@ -714,6 +714,11 @@ impl<R> ApiRetryFuture<R> {
         self.delays = Box::new(delays);
     }
 
+    /// .
+    pub fn set_wait_while_offline(&mut self, wait_while_offline: bool) {
+        self.wait_while_offline = wait_while_offline;
+    }
+
     /// Converts the [ApiRetryFuture] into a future.
     pub async fn into_future(mut self) -> R {
         loop {
@@ -733,6 +738,38 @@ impl<R> ApiRetryFuture<R> {
             }
             return current_result;
         }
+    }
+}
+
+pub async fn retry_api_future<
+    F: FnMut() -> O + 'static,
+    R: FnMut(&T) -> bool + 'static,
+    D: Iterator<Item = Duration> + 'static,
+    O: Future<Output = T>,
+    T,
+>(
+    api_availability: ApiAvailabilityHandle,
+    mut factory: F,
+    mut should_retry: R,
+    mut delays: D,
+    wait_while_offline: bool,
+    wait_while_paused: bool,
+) -> T {
+    loop {
+        if wait_while_paused {
+            let _ = api_availability.wait_background().await;
+        } else if wait_while_offline {
+            let _ = api_availability.wait_online().await;
+        }
+
+        let current_result = (factory)().await;
+        if (should_retry)(&current_result) {
+            if let Some(delay) = delays.next() {
+                talpid_core::future_retry::sleep(delay).await;
+                continue;
+            }
+        }
+        return current_result;
     }
 }
 
@@ -810,6 +847,37 @@ impl DeviceService {
             std::iter::repeat(RETRY_ACTION_INTERVAL),
         )
     }*/
+    pub async fn generate_for_account_rf2(
+        &self,
+        token: AccountToken,
+    ) -> Result<DeviceData, rest::Error> {
+        let private_key = PrivateKey::new_from_random();
+        let pubkey = private_key.public_key();
+
+        let proxy = self.proxy.clone();
+        let api_handle = self.api_availability.clone();
+        let api_handle_2 = self.api_availability.clone();
+
+        let (device, addresses) = retry_api_future(
+            self.api_availability.clone(),
+            move || proxy.create(token.clone(), pubkey.clone()),
+            move |result| should_retry(result, &api_handle_2),
+            constant_interval(RETRY_ACTION_INTERVAL),
+            
+        )
+        .await
+        .map_err(map_rest_error)?;
+
+        Ok(DeviceData {
+            token,
+            device,
+            wg_data: WireguardData {
+                private_key,
+                addresses,
+                created: Utc::now(),
+            },
+        })
+    }
 
     pub fn generate_for_account_rf(
         &self,
