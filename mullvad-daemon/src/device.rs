@@ -677,6 +677,65 @@ fn creatoaa<F: FnMut() -> T, T: Future<Output = Result<R, rest::Error>>, R>(
     )
 }
 
+struct ApiRetryFuture<R> {
+    api_availability: ApiAvailabilityHandle,
+
+    factory: Box<dyn FnMut() -> Pin<Box<dyn Future<Output = R>>>>,
+    should_retry: Box<dyn FnMut(&R) -> bool>,
+    delays: Box<dyn Iterator<Item = Duration>>,
+
+    wait_while_offline: bool,
+    wait_while_paused: bool,
+}
+
+impl<R> ApiRetryFuture<R> {
+    pub fn new<F: Future<Output = R> + Send + 'static>(
+        api_availability: ApiAvailabilityHandle,
+        mut factory: impl FnMut() -> F + 'static,
+        should_retry: impl FnMut(&R) -> bool + 'static,
+        delays: impl Iterator<Item = Duration> + 'static,
+    ) -> Self {
+        Self {
+            api_availability,
+
+            factory: Box::new(move || {
+                Box::pin(factory()) as Pin<Box<_>>
+            }),
+            should_retry: Box::new(should_retry),
+            delays: Box::new(delays),
+
+            wait_while_offline: false,
+            wait_while_paused: false,
+        }
+    }
+
+    /// Sets a different `delays` iterator.
+    pub fn set_delays(&mut self, delays: impl Iterator<Item = Duration> + 'static) {
+        self.delays = Box::new(delays);
+    }
+
+    /// Converts the [ApiRetryFuture] into a future.
+    pub async fn into_future(mut self) -> R {
+        loop {
+            if self.wait_while_paused {
+                let _ = self.api_availability.wait_background().await;
+            } else if self.wait_while_offline {
+                let _ = self.api_availability.wait_online().await;
+            }
+
+            let current_result = (self.factory)().await;
+
+            if (self.should_retry)(&current_result) {
+                if let Some(delay) = self.delays.next() {
+                    talpid_core::future_retry::sleep(delay).await;
+                    continue;
+                }
+            }
+            return current_result;
+        }
+    }
+}
+
 impl DeviceService {
     pub fn new(handle: rest::MullvadRestHandle, api_availability: ApiAvailabilityHandle) -> Self {
         Self {

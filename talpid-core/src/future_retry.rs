@@ -282,7 +282,8 @@ pub fn constant_interval(interval: Duration) -> impl Iterator<Item = Duration> {
     std::iter::repeat(interval)
 }
 
-async fn sleep(mut delay: Duration) {
+/// Sleeps one short interval at a time to work around issues with long-running timers.
+pub async fn sleep(mut delay: Duration) {
     while delay > MAX_SINGLE_DELAY {
         delay -= MAX_SINGLE_DELAY;
         tokio::time::sleep(MAX_SINGLE_DELAY).await;
