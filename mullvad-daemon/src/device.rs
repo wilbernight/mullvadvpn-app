@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use futures::{
     channel::{mpsc, oneshot},
-    future::{abortable, AbortHandle},
+    future::{abortable, AbortHandle, BoxFuture},
     stream::StreamExt,
 };
 use mullvad_rpc::{
@@ -24,7 +24,10 @@ use std::{
     time::{Duration, SystemTime},
 };
 use talpid_core::{
-    future_retry::{constant_interval, retry_future, retry_future_n, ExponentialBackoff, Jittered},
+    future_retry::{
+        constant_interval, retry_future, retry_future_n, ExponentialBackoff, FutureFactory,
+        Jittered, RetryFuture, RetryFuture3, RetryFuture2, ShouldRetry,
+    },
     mpsc::Sender,
 };
 use talpid_types::{
@@ -356,7 +359,7 @@ impl AccountManager {
         Ok(())
     }
 
-    async fn logout_inner(&mut self) -> tokio::task::JoinHandle<()> {
+    fn logout_inner(&mut self) -> tokio::task::JoinHandle<()> {
         let prev_data = self.data.take();
         let service = self.device_service.clone();
 
@@ -615,6 +618,20 @@ pub struct DeviceService {
     proxy: DevicesProxy,
 }
 
+pub struct ShouldRetrySync<T> {
+    api_handle: ApiAvailabilityHandle,
+    _phantom: std::marker::PhantomData<T>,
+}
+
+impl<T> ShouldRetry<Result<T, rest::Error>> for ShouldRetrySync<T> {
+    fn should_retry(&mut self, result: &Result<T, rest::Error>) -> bool {
+        match result {
+            Err(error) if error.is_network_error() => !self.api_handle.get_state().is_offline(),
+            _ => false,
+        }
+    }
+}
+
 impl DeviceService {
     pub fn new(handle: rest::MullvadRestHandle, api_availability: ApiAvailabilityHandle) -> Self {
         Self {
@@ -622,6 +639,64 @@ impl DeviceService {
             api_availability,
         }
     }
+
+    //pub fn test_factory() -> RetryFuture<Box<dyn FnMut() -> BoxFuture<'static, ()>>, Box<dyn FnMut(&()) -> bool>, std::iter::Repeat<Duration>> {
+    pub fn test_factory(&self) -> RetryFuture<Box<dyn FnMut() -> BoxFuture<'static, Result<(), rest::Error>>>, ShouldRetrySync<()>, std::iter::Repeat<Duration>> {
+        // works!
+        //RetryFuture::new(|| async {}, |_result| false, std::iter::repeat(RETRY_ACTION_INTERVAL));
+        // works
+        //RetryFuture::new(Box::new(|| Box::pin(async {})), Box::new(|_result| false), std::iter::repeat(RETRY_ACTION_INTERVAL))
+        let should_retry = ShouldRetrySync {
+            api_handle: self.api_availability.clone(),
+            _phantom: std::marker::PhantomData,
+        };
+        RetryFuture::new(Box::new(|| Box::pin(async {
+            Ok(())
+        })), should_retry, std::iter::repeat(RETRY_ACTION_INTERVAL))
+    }
+
+    /// Generate a new device for a given token
+    pub async fn generate_for_account_factory<
+        F: Future<Output = Result<DeviceData, rest::Error>>,
+    >(
+        &self,
+        token: AccountToken,
+    ) -> impl FnMut() -> Box<dyn Future<Output = Result<DeviceData, rest::Error>>> {
+        let private_key = PrivateKey::new_from_random();
+        let pubkey = private_key.public_key();
+
+        let proxy = self.proxy.clone();
+        let api_handle = self.api_availability.clone();
+
+        move || {
+            let private_key = private_key.clone();
+            let token_copy = token.clone();
+            let result = proxy.create(token_copy.clone(), pubkey.clone());
+
+            Box::new(async {
+                result.await.map(|(device, addresses)| DeviceData {
+                    token: token_copy,
+                    device,
+                    wg_data: WireguardData {
+                        private_key,
+                        addresses,
+                        created: Utc::now(),
+                    },
+                })
+            })
+        }
+    }
+
+    /// Generate a new device for a given token
+    // pub fn generate_for_account_2<
+    // F: Future<Output = Result<DeviceData, Error>>,
+    // >(&self, token: AccountToken) -> RetryFuture<Box<dyn FnMut() -> F>, Box<dyn
+    // FnMut(&Result<DeviceData, Error>) -> bool>, std::iter::Repeat<Duration>> { RetryFuture::
+    // new( Box::new(move || Box::new(async { Err(Error::NoDevice) }) as Box<Future<Output =
+    // Result<DeviceData, Error>>>), Box::new(|_r| false),
+    // std::iter::repeat(RETRY_ACTION_INTERVAL),
+    // )
+    // }
 
     /// Generate a new device for a given token
     pub async fn generate_for_account(&self, token: AccountToken) -> Result<DeviceData, Error> {
