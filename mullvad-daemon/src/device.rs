@@ -21,7 +21,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
-    time::{Duration, SystemTime},
+    time::{Duration, SystemTime}, pin::Pin,
 };
 use talpid_core::{
     future_retry::{
@@ -618,6 +618,36 @@ pub struct DeviceService {
     proxy: DevicesProxy,
 }
 
+pub struct DeviceFactory {
+    proxy: DevicesProxy,
+    api_availability: ApiAvailabilityHandle,
+    private_key: PrivateKey,
+}
+
+impl DeviceFactory {
+    fn new(service: &DeviceService) -> Self {
+        let private_key = PrivateKey::new_from_random();
+        Self {
+            proxy: service.proxy.clone(),
+            api_availability: service.api_availability.clone(),
+            private_key,
+        }
+    }
+}
+
+impl FutureFactory for DeviceFactory {
+    type Output = Pin<Box<dyn Future<Output = Result<(), rest::Error>>>>;
+
+    fn new(&mut self) -> Self::Output {
+        
+        Box::pin(async move {
+            Ok(())
+        })
+    }
+}
+
+type PinnedResult<T> = Pin<Box<dyn Future<Output = Result<T, rest::Error>>>>;
+
 pub struct ShouldRetrySync<T> {
     api_handle: ApiAvailabilityHandle,
     _phantom: std::marker::PhantomData<T>,
@@ -632,6 +662,21 @@ impl<T> ShouldRetry<Result<T, rest::Error>> for ShouldRetrySync<T> {
     }
 }
 
+fn creatoaa<F: FnMut() -> T, T: Future<Output = Result<R, rest::Error>>, R>(
+    service: &DeviceService,
+    api_handle: ApiAvailabilityHandle,
+    new_future: F,
+) -> RetryFuture<F, ShouldRetrySync<R>, std::iter::Repeat<Duration>> {
+    RetryFuture::new(
+        new_future,
+        ShouldRetrySync {
+            api_handle,
+            _phantom: std::marker::PhantomData,
+        },
+        std::iter::repeat(RETRY_ACTION_INTERVAL),
+    )
+}
+
 impl DeviceService {
     pub fn new(handle: rest::MullvadRestHandle, api_availability: ApiAvailabilityHandle) -> Self {
         Self {
@@ -640,8 +685,18 @@ impl DeviceService {
         }
     }
 
+    fn test_fut_fac(&self) -> impl FutureFactory<Output = Pin<Box<dyn Future<Output = ()>>>> {
+        || Box::pin(async move {
+            
+        }) as Pin<Box<_>>
+    }
+
     //pub fn test_factory() -> RetryFuture<Box<dyn FnMut() -> BoxFuture<'static, ()>>, Box<dyn FnMut(&()) -> bool>, std::iter::Repeat<Duration>> {
-    pub fn test_factory(&self) -> RetryFuture<Box<dyn FnMut() -> BoxFuture<'static, Result<(), rest::Error>>>, ShouldRetrySync<()>, std::iter::Repeat<Duration>> {
+    //pub fn test_factory(&self) -> RetryFuture<DeviceFactory, ShouldRetrySync<()>, std::iter::Repeat<Duration>> {
+    //pub fn test_factory(&self) -> RetryFuture<Box<dyn FnMut() -> PinnedResult<()>>, ShouldRetrySync<()>, std::iter::Repeat<Duration>> {
+    //pub fn test_factory<F: Future<Output = Result<(), rest::Error>>>(&self) -> RetryFuture<BoxFutureGenerator<F>, ShouldRetrySync<()>, std::iter::Repeat<Duration>> {
+    //pub fn test_factory(&self) -> RetryFuture<Box<dyn FnMut() -> PinnedResult<()>>, ShouldRetrySync<()>, std::iter::Repeat<Duration>> {
+    pub fn test_factory(&self) -> RetryFuture<fn() -> PinnedResult<()>, ShouldRetrySync<()>, std::iter::Repeat<Duration>> {
         // works!
         //RetryFuture::new(|| async {}, |_result| false, std::iter::repeat(RETRY_ACTION_INTERVAL));
         // works
@@ -650,9 +705,128 @@ impl DeviceService {
             api_handle: self.api_availability.clone(),
             _phantom: std::marker::PhantomData,
         };
-        RetryFuture::new(Box::new(|| Box::pin(async {
-            Ok(())
-        })), should_retry, std::iter::repeat(RETRY_ACTION_INTERVAL))
+        // works!
+        //RetryFuture::new(DeviceFactory::new(self), should_retry, std::iter::repeat(RETRY_ACTION_INTERVAL))
+
+        //RetryFuture::new(BoxFutureGenerator::new(move || async {
+        //    Ok(())
+        //}), should_retry, std::iter::repeat(RETRY_ACTION_INTERVAL))
+
+        let private_key = PrivateKey::new_from_random();
+
+        RetryFuture::new(move || {
+                Box::pin(async {
+                    Ok(())
+                })
+            },
+            should_retry,
+            std::iter::repeat(RETRY_ACTION_INTERVAL),
+        )
+    }
+
+    /*pub fn test_factory2(&self) -> RetryFuture2<dyn Future<Output = Result<(), rest::Error>> + Unpin> {
+        // works!
+        //RetryFuture::new(|| async {}, |_result| false, std::iter::repeat(RETRY_ACTION_INTERVAL));
+        // works
+        //RetryFuture::new(Box::new(|| Box::pin(async {})), Box::new(|_result| false), std::iter::repeat(RETRY_ACTION_INTERVAL))
+        let should_retry = ShouldRetrySync {
+            api_handle: self.api_availability.clone(),
+            _phantom: std::marker::PhantomData,
+        };
+        // works!
+        //RetryFuture::new(DeviceFactory::new(self), should_retry, std::iter::repeat(RETRY_ACTION_INTERVAL))
+
+        //RetryFuture::new(BoxFutureGenerator::new(move || async {
+        //    Ok(())
+        //}), should_retry, std::iter::repeat(RETRY_ACTION_INTERVAL))
+
+        let private_key = PrivateKey::new_from_random();
+
+        RetryFuture2::new(move || {
+                Box::pin(async {
+                    Ok(())
+                })
+            },
+            should_retry,
+            std::iter::repeat(RETRY_ACTION_INTERVAL),
+        )
+    }*/
+
+    pub fn generate_for_account_rf(
+        &self,
+        token: AccountToken,
+    ) -> RetryFuture2<Result<DeviceData, rest::Error>> {
+        let private_key = PrivateKey::new_from_random();
+        let pubkey = private_key.public_key();
+
+        let proxy = self.proxy.clone();
+        let api_handle = self.api_availability.clone();
+        let api_handle_2 = self.api_availability.clone();
+
+        RetryFuture2::new(
+            move || {
+                let wait_fut = api_handle.wait_online();
+                let fut = proxy.create(token.clone(), pubkey.clone());
+
+                let token_clone = token.clone();
+                let private_key = private_key.clone();
+
+                async move {
+                    fut.await.map(|(device, addresses)| DeviceData {
+                        token: token_clone,
+                        device,
+                        wg_data: WireguardData {
+                            private_key: private_key.clone(),
+                            addresses,
+                            created: Utc::now(),
+                        },
+                    })
+                }
+            },
+            move |result| should_retry(result, &api_handle_2),
+            constant_interval(RETRY_ACTION_INTERVAL),
+        )
+    }
+
+    pub async fn generate_for_account_d<F: Future<Output = Result<DeviceData, rest::Error>>>(
+        &self,
+        token: AccountToken,
+        wait_for_connectivity: bool,
+        delays: impl Iterator<Item = Duration> + 'static,
+    ) -> Result<DeviceData, Error> {
+        let private_key = PrivateKey::new_from_random();
+        let pubkey = private_key.public_key();
+
+        let proxy = self.proxy.clone();
+        let api_handle = self.api_availability.clone();
+        let api_handle_2 = self.api_availability.clone();
+        let token_copy = token.clone();
+        let (device, addresses) = retry_future(
+            move || {
+                let wait_fut = api_handle.wait_online();
+                let fut = proxy.create(token_copy.clone(), pubkey.clone());
+                async move {
+                    if wait_for_connectivity {
+                        let _ = wait_fut.await;
+                    }
+                    fut.await
+                }
+            },
+            move |result| should_retry(result, &api_handle_2),
+            delays,
+        )
+        .await
+        .map_err(map_rest_error)?;
+
+        Ok(DeviceData {
+            token,
+            device,
+            wg_data: WireguardData {
+                private_key,
+                addresses,
+                created: Utc::now(),
+            },
+        })
     }
 
     /// Generate a new device for a given token
