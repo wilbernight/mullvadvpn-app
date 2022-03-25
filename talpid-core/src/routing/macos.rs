@@ -133,6 +133,8 @@ impl RouteManagerImpl {
     }
 
     async fn add_required_routes(&mut self, required_routes: HashSet<RequiredRoute>) -> Result<()> {
+        log::debug!("Add required routes: {:?}", required_routes);
+
         let mut routes_to_apply = vec![];
         let mut default_destinations = HashSet::new();
 
@@ -251,6 +253,8 @@ impl RouteManagerImpl {
     }
 
     async fn cleanup_routes(&self) -> () {
+        log::debug!("Clearing all routes");
+
         let destinations_to_remove = self
             .applied_routes
             .iter()
