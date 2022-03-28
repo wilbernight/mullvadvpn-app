@@ -946,6 +946,28 @@ pub extern "system" fn Java_net_mullvad_mullvadvpn_service_MullvadDaemon_setDnsO
 
 #[no_mangle]
 #[allow(non_snake_case)]
+pub extern "system" fn Java_net_mullvad_mullvadvpn_service_MullvadDaemon_setObfuscationSettings(
+    env: JNIEnv<'_>,
+    _: JObject<'_>,
+    daemon_interface_address: jlong,
+    obfuscationSettings: JObject<'_>,
+) {
+    let env = JnixEnv::from(env);
+
+    if let Some(daemon_interface) = get_daemon_interface(daemon_interface_address) {
+        let obfuscation_settings = ObfuscationSettings::from_java(&env, obfuscationSettings);
+
+        if let Err(error) = daemon_interface.set_obfuscation_settings(obfuscation_settings) {
+            log::error!(
+                "{}",
+                error.display_chain_with_msg("Failed to set obfuscation settings")
+            );
+        }
+    }
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
 pub extern "system" fn Java_net_mullvad_mullvadvpn_service_MullvadDaemon_setWireguardMtu(
     env: JNIEnv<'_>,
     _: JObject<'_>,
