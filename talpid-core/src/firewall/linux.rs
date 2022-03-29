@@ -363,7 +363,7 @@ impl<'a> PolicyBatch<'a> {
             let mut rule = Rule::new(chain);
             rule.add_expr(&nft_expr!(meta cgroup));
             rule.add_expr(&nft_expr!(cmp == split_tunnel::NET_CLS_CLASSID));
-            rule.add_expr(&nft_expr!(immediate data split_tunnel::MARK));
+            rule.add_expr(&nft_expr!(immediate data crate::linux::TUNNEL_FW_MARK));
             rule.add_expr(&nft_expr!(ct mark set));
             rule.add_expr(&nft_expr!(immediate data crate::linux::TUNNEL_FW_MARK));
             rule.add_expr(&nft_expr!(meta mark set));
@@ -373,7 +373,7 @@ impl<'a> PolicyBatch<'a> {
         for chain in &[&self.in_chain, &self.out_chain] {
             let mut rule = Rule::new(chain);
             rule.add_expr(&nft_expr!(ct mark));
-            rule.add_expr(&nft_expr!(cmp == split_tunnel::MARK));
+            rule.add_expr(&nft_expr!(cmp == crate::linux::TUNNEL_FW_MARK));
             add_verdict(&mut rule, &Verdict::Accept);
             self.batch.add(&rule, nftnl::MsgType::Add);
         }
@@ -385,7 +385,7 @@ impl<'a> PolicyBatch<'a> {
                 let mut block_tunnel_rule = Rule::new(chain);
                 check_iface(&mut block_tunnel_rule, Direction::Out, &tunnel.interface)?;
                 block_tunnel_rule.add_expr(&nft_expr!(ct mark));
-                block_tunnel_rule.add_expr(&nft_expr!(cmp == split_tunnel::MARK));
+                block_tunnel_rule.add_expr(&nft_expr!(cmp == crate::linux::TUNNEL_FW_MARK));
                 add_verdict(&mut block_tunnel_rule, &Verdict::Drop);
                 self.batch.add(&block_tunnel_rule, nftnl::MsgType::Add);
             }
@@ -400,7 +400,7 @@ impl<'a> PolicyBatch<'a> {
             rule.add_expr(&nft_expr!(cmp != iface_index));
 
             rule.add_expr(&nft_expr!(ct mark));
-            rule.add_expr(&nft_expr!(cmp == split_tunnel::MARK));
+            rule.add_expr(&nft_expr!(cmp == crate::linux::TUNNEL_FW_MARK));
 
             rule.add_expr(&nft_expr!(masquerade));
             if *ADD_COUNTERS {
@@ -415,7 +415,7 @@ impl<'a> PolicyBatch<'a> {
             let mut prerouting_rule = Rule::new(&self.prerouting_chain);
             check_not_iface(&mut prerouting_rule, Direction::In, &tunnel.interface)?;
             prerouting_rule.add_expr(&nft_expr!(ct mark));
-            prerouting_rule.add_expr(&nft_expr!(cmp == split_tunnel::MARK));
+            prerouting_rule.add_expr(&nft_expr!(cmp == crate::linux::TUNNEL_FW_MARK));
             prerouting_rule.add_expr(&nft_expr!(immediate data crate::linux::TUNNEL_FW_MARK));
             prerouting_rule.add_expr(&nft_expr!(meta mark set));
             if *ADD_COUNTERS {
