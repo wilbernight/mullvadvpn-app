@@ -156,13 +156,17 @@ jobs:
                 name: apks
 
             - name: AVD cache
-              uses: actions/cache@v2
+              uses: tespkg/actions-cache@v1
               id: avd-cache
               with:
                 path: |
                   ~/.android/avd/*
                   ~/.android/adb*
-                key: emulator-api-29
+                key: emulator-api-29-test-s3-1
+                region: eu-central-1
+                bucket: mullvadappcachetest
+                accessKey: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                secretKey: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
             - name: Create avd and generate snapshot
               uses: reactivecircus/android-emulator-runner@v2
