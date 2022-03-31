@@ -167,6 +167,7 @@ jobs:
                 bucket: mullvadappcachetest
                 accessKey: ${{ secrets.AWS_ACCESS_KEY_ID }}
                 secretKey: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                use-fallback: false
 
             - name: Create avd and generate snapshot
               uses: reactivecircus/android-emulator-runner@v2
