@@ -49,16 +49,11 @@ class ReplaceKeyOperation: ResultOperation<TunnelManager.KeyRotationResult, Tunn
             restClient: restClient,
             rotationInterval: nil
         ) { completion in
-            let mappedCompletion = completion.map { keyRotationResult -> () in
-                switch keyRotationResult {
-                case .finished:
-                    return ()
-                case .throttled:
-                    fatalError("ReplaceKeyOperation.operationForKeyRegeneration() must never recieve throttled!")
-                }
+            if case .success(.throttled) = completion {
+                fatalError("ReplaceKeyOperation.operationForKeyRegeneration() must never recieve throttled!")
             }
 
-            completionHandler(mappedCompletion)
+            completionHandler(completion.map { _ in () })
         }
     }
 

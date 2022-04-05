@@ -11,6 +11,7 @@ import StoreKit
 import Logging
 
 /// A enum holding the `UserDefaults` string keys
+// swiftformat:disable:next redundantRawValues
 private enum UserDefaultsKeys: String {
     case isAgreedToTermsOfService = "isAgreedToTermsOfService"
     case accountToken = "accountToken"
