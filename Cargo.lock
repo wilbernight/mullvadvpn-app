@@ -2711,6 +2711,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "talpid-time"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "tokio",
+]
+
+[[package]]
 name = "talpid-types"
 version = "0.1.0"
 dependencies = [
