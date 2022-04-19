@@ -2652,6 +2652,7 @@ dependencies = [
  "system-configuration",
  "talpid-dbus",
  "talpid-platform-metadata",
+ "talpid-time",
  "talpid-types",
  "tempfile",
  "tokio",

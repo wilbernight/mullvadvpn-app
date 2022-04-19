@@ -23,6 +23,9 @@ Line wrap the file at 100 chars.                                              Th
 
 
 ## [Unreleased]
+### Fixed
+#### macOS
+- Fix thrashing due to DNS config monitoring.
 
 
 ## [2022.1] - 2022-03-01
