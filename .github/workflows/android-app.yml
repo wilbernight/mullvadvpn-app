@@ -109,7 +109,7 @@ jobs:
               uses: burrunan/gradle-cache-action@v1
               with:
                 job-id: jdk8
-                arguments: assembleDebug
+                arguments: assemble
                 gradle-version: wrapper
                 build-root-directory: android
 
