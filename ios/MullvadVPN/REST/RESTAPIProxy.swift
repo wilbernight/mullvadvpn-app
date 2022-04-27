@@ -27,6 +27,7 @@ extension REST {
             )
         }
 
+        @available(*, deprecated, message: "Use AccountsProxy instead.")
         func createAccount(
             retryStrategy: REST.RetryStrategy,
             completionHandler: @escaping CompletionHandler<AccountResponse>
@@ -128,6 +129,7 @@ extension REST {
             )
         }
 
+        @available(*, deprecated, message: "Use AccountsProxy instead.")
         func getAccountExpiry(
             accountNumber: String,
             retryStrategy: REST.RetryStrategy,
@@ -160,6 +162,7 @@ extension REST {
             )
         }
 
+        @available(*, deprecated, message: "Use DevicesProxy instead.")
         func getWireguardKey(
             accountNumber: String,
             publicKey: PublicKey,
@@ -197,6 +200,7 @@ extension REST {
             )
         }
 
+        @available(*, deprecated, message: "Use DevicesProxy instead.")
         func pushWireguardKey(
             accountNumber: String,
             publicKey: PublicKey,
@@ -240,6 +244,7 @@ extension REST {
             )
         }
 
+        @available(*, deprecated, message: "Use DevicesProxy instead.")
         func replaceWireguardKey(
             accountNumber: String,
             oldPublicKey: PublicKey,
@@ -285,6 +290,7 @@ extension REST {
             )
         }
 
+        @available(*, deprecated, message: "Use DevicesProxy instead.")
         func deleteWireguardKey(
             accountNumber: String,
             publicKey: PublicKey,
