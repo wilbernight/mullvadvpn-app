@@ -493,6 +493,15 @@ class ApplicationMain {
   }
 
   private onReady = async () => {
+    process.on('SIGTERM', () => {
+      log.info('SIGTERM received');
+      app.quit();
+    });
+
+    process.on('SIGHUP', () => {
+      log.info('SIGHUP received');
+    });
+
     // Disable built-in DNS resolver.
     app.configureHostResolver({
       enableBuiltInResolver: false,
