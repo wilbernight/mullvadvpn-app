@@ -22,7 +22,7 @@ sealed class DeviceState : Parcelable {
     }
 
     fun token(): String? {
-        return (this as? DeviceRegistered)?.deviceConfig?.token
+        return (this as? DeviceRegistered)?.deviceConfig?.account_token
     }
 
     companion object {
