@@ -93,6 +93,12 @@ class AccountCache(private val endpoint: ServiceEndpoint) {
                 }
             }
 
+            registerHandler(Request.FetchAccountHistory::class) { _ ->
+                jobTracker.newBackgroundJob("fetchAccountHistory") {
+                    accountHistory = fetchAccountHistory()
+                }
+            }
+
             registerHandler(Request.InvalidateAccountExpiry::class) { request ->
                 // TODO: Implement account expiry invalidation if still required.
             }
@@ -123,7 +129,7 @@ class AccountCache(private val endpoint: ServiceEndpoint) {
     private fun clearAccountHistory() {
         jobTracker.newBackgroundJob("clearAccountHistory") {
             daemon.await().clearAccountHistory()
-            fetchAccountHistory()
+            accountHistory = fetchAccountHistory()
         }
     }
 
@@ -168,18 +174,15 @@ class AccountCache(private val endpoint: ServiceEndpoint) {
     private suspend fun doLogout() {
         daemon.await().logoutAccount()
         loginStatus = null
-        fetchAccountHistory()
+        accountHistory = fetchAccountHistory()
     }
 
-    // TODO: Refactor in later commit.
-    private fun fetchAccountHistory() {
-        jobTracker.newBackgroundJob("fetchHistory") {
-            daemon.await().getAccountHistory().let { history ->
-                accountHistory = if (history != null) {
-                    AccountHistory.WithHistory(history)
-                } else {
-                    AccountHistory.WithoutHistory
-                }
+    private suspend fun fetchAccountHistory(): AccountHistory {
+        return daemon.await().getAccountHistory().let { result ->
+            if (result != null) {
+                AccountHistory.WithHistory(result)
+            } else {
+                AccountHistory.WithoutHistory
             }
         }
     }
