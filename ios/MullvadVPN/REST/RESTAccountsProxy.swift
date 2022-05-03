@@ -22,10 +22,36 @@ extension REST {
             )
         }
 
-        func getMyAccount(
+        func createAccount(
+            retryStrategy: REST.RetryStrategy,
+            completion: @escaping CompletionHandler<AccountData>
+        ) -> Cancellable {
+            let requestHandler = AnyRequestHandler { endpoint in
+                return self.requestFactory.createURLRequest(
+                    endpoint: endpoint,
+                    method: .post,
+                    path: "accounts"
+                )
+            }
+
+            let responseHandler = REST.defaultResponseHandler(
+                decoding: AccountData.self,
+                with: responseDecoder
+            )
+
+            return addOperation(
+                name: "create-account",
+                retryStrategy: retryStrategy,
+                requestHandler: requestHandler,
+                responseHandler: responseHandler,
+                completionHandler: completion
+            )
+        }
+
+        func getAccountData(
             accountNumber: String,
             retryStrategy: REST.RetryStrategy,
-            completion: @escaping CompletionHandler<BetaAccountResponse>
+            completion: @escaping CompletionHandler<AccountData>
         ) -> Cancellable
         {
             let requestHandler = AnyRequestHandler(
@@ -54,7 +80,7 @@ extension REST {
             )
 
             let responseHandler = REST.defaultResponseHandler(
-                decoding: BetaAccountResponse.self,
+                decoding: AccountData.self,
                 with: responseDecoder
             )
 
@@ -68,7 +94,7 @@ extension REST {
         }
     }
 
-    struct BetaAccountResponse: Decodable {
+    struct AccountData: Decodable {
         let id: String
         let number: String
         let expiry: Date
