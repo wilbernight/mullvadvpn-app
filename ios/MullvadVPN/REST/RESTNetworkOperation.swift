@@ -246,19 +246,40 @@ extension REST {
         private func didReceiveURLResponse(_ response: HTTPURLResponse, data: Data, endpoint: AnyIPEndpoint) {
             dispatchPrecondition(condition: .onQueue(dispatchQueue))
 
-            let result = responseHandler.handleURLResponse(response, data: data)
+            let handlerResult = responseHandler.handleURLResponse(response, data: data)
 
-            if case .server(.invalidAccessToken) = result.error,
-                requiresAuthorization, retryInvalidAccessTokenError
-            {
-                logger.debug(
-                    "Received invalid access token error. Retry once.",
-                    metadata: loggerMetadata
-                )
-                retryInvalidAccessTokenError = false
-                startRequest()
-            } else {
-                finish(completion: OperationCompletion(result: result))
+            switch handlerResult {
+            case .success(let output):
+                // Response handler produced value.
+                finish(completion: .success(output))
+
+            case .decoding(let decoderBlock):
+                // Response handler returned a block decoding value.
+                let decodeResult = Result { try decoderBlock() }
+                    .mapError { error -> REST.Error in
+                        return .decodeResponse(error)
+                    }
+                finish(completion: OperationCompletion(result: decodeResult))
+
+            case .unhandledResponse(let serverErrorResponse):
+                // Response handler couldn't handle the response.
+                if serverErrorResponse?.code == .invalidAccessToken,
+                    requiresAuthorization,
+                    retryInvalidAccessTokenError
+                {
+                    logger.debug(
+                        "Received invalid access token error. Retry once.",
+                        metadata: loggerMetadata
+                    )
+                    retryInvalidAccessTokenError = false
+                    startRequest()
+                } else {
+                    finish(
+                        completion: .failure(
+                            .unhandledResponse(response.statusCode, serverErrorResponse)
+                        )
+                    )
+                }
             }
         }
     }
