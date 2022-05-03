@@ -125,7 +125,7 @@ class SetAccountOperation: ResultOperation<(), TunnelManager.Error> {
         }
     }
 
-    private func addTunnelSettings(accountToken: String) -> Result<TunnelSettings, TunnelManager.Error> {
+    private func addTunnelSettings(accountToken: String) -> Result<TunnelSettingsV1, TunnelManager.Error> {
         return TunnelSettingsManager.remove(searchTerm: .accountToken(accountToken))
             .flatMapError { error in
                 if case .removeEntry(.itemNotFound) = error {
@@ -135,7 +135,7 @@ class SetAccountOperation: ResultOperation<(), TunnelManager.Error> {
                 }
             }
             .flatMap { _ in
-                let defaultSettings = TunnelSettings()
+                let defaultSettings = TunnelSettingsV1()
 
                 return TunnelSettingsManager.add(configuration: defaultSettings, account: accountToken)
                     .map { _ in

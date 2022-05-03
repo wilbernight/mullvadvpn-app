@@ -15,49 +15,6 @@ private let kServiceName = "Mullvad VPN"
 enum TunnelSettingsManager {}
 
 extension TunnelSettingsManager {
-
-    enum Error: ChainedError {
-        /// A failure to encode the given tunnel settings
-        case encode(Swift.Error)
-
-        /// A failure to decode the data stored in Keychain
-        case decode(Swift.Error)
-
-        /// A failure to add a new entry to Keychain
-        case addEntry(Keychain.Error)
-
-        /// A failure to update the existing entry in Keychain
-        case updateEntry(Keychain.Error)
-
-        /// A failure to remove an entry in Keychain
-        case removeEntry(Keychain.Error)
-
-        /// A failure to query the entry in Keychain
-        case lookupEntry(Keychain.Error)
-
-        /// Missing attributes required to perform an operation.
-        case missingRequiredAttributes
-
-        var errorDescription: String? {
-            switch self {
-            case .encode:
-                return "Failure to encode settings."
-            case .decode:
-                return "Failure to decode settings."
-            case .addEntry:
-                return "Failure to add keychain entry."
-            case .updateEntry:
-                return "Failure to update keychain entry."
-            case .removeEntry:
-                return "Failure to remove keychain entry."
-            case .lookupEntry:
-                return "Failure to lookup keychain entry."
-            case .missingRequiredAttributes:
-                return "Keychain entry is missing required set of attributes."
-            }
-        }
-    }
-
     typealias Result<T> = Swift.Result<T, Error>
 
     /// Keychain access level that should be used for all items containing tunnel settings
@@ -87,7 +44,7 @@ extension TunnelSettingsManager {
 
     struct KeychainEntry {
         let accountToken: String
-        let tunnelSettings: TunnelSettings
+        let tunnelSettings: TunnelSettingsV1
     }
 
     static func load(searchTerm: KeychainSearchTerm) -> Result<KeychainEntry> {
@@ -106,7 +63,7 @@ extension TunnelSettingsManager {
             }
     }
 
-    static func add(configuration: TunnelSettings, account: String) -> Result<()> {
+    static func add(configuration: TunnelSettingsV1, account: String) -> Result<()> {
         Self.encode(tunnelConfig: configuration)
             .flatMap { (data) -> Result<()> in
                 var attributes = KeychainSearchTerm.accountToken(account)
@@ -128,15 +85,8 @@ extension TunnelSettingsManager {
         }
     }
 
-    /// This is a migration path for the existing Keychain entries created by 2020.2 or before.
-    ///
-    /// - Set the appropriate `accessible` so that the Packet Tunnel can access the tunnel
-    ///    configuration when the device is locked.
-    /// - Add revision field
-    ///
-    /// - Returns: A boolean that indicates whether the entry was up to date prior to the
-    ///            migration request.
-
+    /// Migrate keychain entries created by 2020.2 or before by adding the appropriate
+    /// access attribute to them so that the Packet Tunnel could read the entries.
     static func migrateKeychainEntry(searchTerm: KeychainSearchTerm) -> Result<Bool> {
         var queryAttributes = searchTerm.makeKeychainAttributes()
         queryAttributes.return = [.attributes]
@@ -147,7 +97,7 @@ extension TunnelSettingsManager {
                 let searchAttributes = searchTerm.makeKeychainAttributes()
                 var updateAttributes = Keychain.Attributes()
 
-                // Fix the accessibility permission for the Keychain entry
+                // Fix the access permission for Keychain entry
                 if itemAttributes?.accessible != Self.keychainAccessibleLevel {
                     updateAttributes.accessible = Self.keychainAccessibleLevel
                 }
@@ -169,24 +119,24 @@ extension TunnelSettingsManager {
     /// The given block may run multiple times if Keychain entry was changed between read and write
     /// operations.
     static func update(searchTerm: KeychainSearchTerm,
-                       using changeConfiguration: (inout TunnelSettings) -> Void) -> Result<TunnelSettings>
+                       using changeConfiguration: (inout TunnelSettingsV1) -> Void) -> Result<TunnelSettingsV1>
     {
         var searchQuery = searchTerm.makeKeychainAttributes()
         searchQuery.return = [.attributes, .data]
 
         let result = Keychain.findFirst(query: searchQuery)
             .mapError { .lookupEntry($0) }
-            .flatMap { itemAttributes -> Result<TunnelSettings> in
+            .flatMap { itemAttributes -> Result<TunnelSettingsV1> in
                 guard let serializedData = itemAttributes?.valueData,
                       let account = itemAttributes?.account else { return .failure(.missingRequiredAttributes) }
 
                 return Self.decode(data: serializedData)
-                    .flatMap { (tunnelConfig) -> Result<TunnelSettings> in
+                    .flatMap { (tunnelConfig) -> Result<TunnelSettingsV1> in
                         var tunnelConfig = tunnelConfig
                         changeConfiguration(&tunnelConfig)
 
                         return Self.encode(tunnelConfig: tunnelConfig)
-                            .flatMap { (newData) -> Result<TunnelSettings> in
+                            .flatMap { (newData) -> Result<TunnelSettingsV1> in
                                 // `SecItemUpdate` does not accept query parameters when using
                                 // persistent reference, so constraint the query to account
                                 // token instead now when we know it
@@ -246,13 +196,13 @@ extension TunnelSettingsManager {
             })
     }
 
-    private static func encode(tunnelConfig: TunnelSettings) -> Result<Data> {
+    private static func encode(tunnelConfig: TunnelSettingsV1) -> Result<Data> {
         return Swift.Result { try JSONEncoder().encode(tunnelConfig) }
             .mapError { .encode($0) }
     }
 
-    private static func decode(data: Data) -> Result<TunnelSettings> {
-        return Swift.Result { try JSONDecoder().decode(TunnelSettings.self, from: data) }
+    private static func decode(data: Data) -> Result<TunnelSettingsV1> {
+        return Swift.Result { try JSONDecoder().decode(TunnelSettingsV1.self, from: data) }
             .mapError { .decode($0) }
     }
 }

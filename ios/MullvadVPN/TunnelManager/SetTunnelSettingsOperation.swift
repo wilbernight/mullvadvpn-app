@@ -9,7 +9,7 @@
 import Foundation
 
 class SetTunnelSettingsOperation: ResultOperation<(), TunnelManager.Error> {
-    typealias ModificationHandler = (inout TunnelSettings) -> Void
+    typealias ModificationHandler = (inout TunnelSettingsV1) -> Void
 
     private let queue: DispatchQueue
     private let state: TunnelManager.State

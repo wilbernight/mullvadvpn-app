@@ -161,7 +161,7 @@ class WireguardKeysViewController: UIViewController, TunnelObserver {
         contentView.creationRowView.value = formatKeyGenerationElapsedTime(with: creationDate) ?? "-"
     }
 
-    private func updatePublicKey(tunnelSettings: TunnelSettings?, animated: Bool) {
+    private func updatePublicKey(tunnelSettings: TunnelSettingsV1?, animated: Bool) {
         if let publicKey = tunnelSettings?.interface.privateKey.publicKeyWithMetadata {
             let displayKey = publicKey
                 .stringRepresentation(maxLength: kDisplayPublicKeyMaxLength)

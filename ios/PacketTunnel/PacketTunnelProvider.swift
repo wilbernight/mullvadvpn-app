@@ -479,7 +479,7 @@ enum PacketTunnelProviderError: ChainedError {
 }
 
 struct PacketTunnelConfiguration {
-    var tunnelSettings: TunnelSettings
+    var tunnelSettings: TunnelSettingsV1
     var selectorResult: RelaySelectorResult
 }
 

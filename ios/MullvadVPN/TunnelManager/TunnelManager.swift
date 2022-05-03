@@ -598,7 +598,7 @@ final class TunnelManager: TunnelManagerStateDelegate {
             })
     }
 
-    private func scheduleTunnelSettingsUpdate(taskName: String, modificationBlock: @escaping (inout TunnelSettings) -> Void, completionHandler: @escaping (TunnelManager.Error?) -> Void) {
+    private func scheduleTunnelSettingsUpdate(taskName: String, modificationBlock: @escaping (inout TunnelSettingsV1) -> Void, completionHandler: @escaping (TunnelManager.Error?) -> Void) {
         let operation = SetTunnelSettingsOperation(
             queue: stateQueue,
             state: state,
