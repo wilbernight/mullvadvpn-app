@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import styled from 'styled-components';
 
 import { colors } from '../../config.json';
@@ -9,7 +9,9 @@ import { useBoolean } from '../lib/utilityHooks';
 import { IReduxState, useSelector } from '../redux/store';
 import Accordion from './Accordion';
 import * as AppButton from './AppButton';
+import { AriaInputGroup, AriaLabel } from './AriaGroup';
 import * as Cell from './cell';
+import Selector from './cell/Selector';
 import { normalText } from './common-styles';
 import ImageView from './ImageView';
 import { BackAction } from './KeyboardNavigation';
@@ -37,12 +39,20 @@ const StyledFooter = styled.div({
   padding: '18px 22px 22px',
 });
 
+enum Ownership {
+  any,
+  owned,
+  rented,
+}
+
 export default function Filter() {
   const history = useHistory();
   const { updateRelaySettings } = useAppContext();
 
   const initialProviders = useSelector(providersSelector);
   const [providers, setProviders] = useState<Record<string, boolean>>(initialProviders);
+
+  const [ownership, setOwnership] = useState<Ownership>(Ownership.any);
 
   const onApply = useCallback(async () => {
     // If all providers are selected it's represented as an empty array.
@@ -72,8 +82,8 @@ export default function Filter() {
               </NavigationItems>
             </NavigationBar>
             <StyledNavigationScrollbars>
+              <FilterByOwnership ownership={ownership} setOwnership={setOwnership} />
               <FilterByProvider providers={providers} setProviders={setProviders} />
-              <FilterByOwnership />
             </StyledNavigationScrollbars>
             <StyledFooter>
               <AppButton.GreenButton
@@ -110,8 +120,54 @@ function providersSelector(state: IReduxState): Record<string, boolean> {
   );
 }
 
-function FilterByOwnership() {
-  return null;
+const StyledSelector = (styled(Selector)({
+  marginBottom: 0,
+}) as unknown) as new <T>() => Selector<T>;
+
+interface IFilterByOwnershipProps {
+  ownership: Ownership;
+  setOwnership: (ownership: Ownership) => void;
+}
+
+function FilterByOwnership(props: IFilterByOwnershipProps) {
+  const [expanded, , , toggleExpanded] = useBoolean(false);
+
+  const values = useMemo(
+    () => [
+      {
+        label: messages.gettext('Any'),
+        value: Ownership.any,
+      },
+      {
+        label: messages.pgettext('filter-view', 'Mullvad owned only'),
+        value: Ownership.owned,
+      },
+      {
+        label: messages.pgettext('filter-view', 'Rented only'),
+        value: Ownership.rented,
+      },
+    ],
+    [],
+  );
+
+  return (
+    <AriaInputGroup>
+      <Cell.CellButton onClick={toggleExpanded}>
+        <AriaLabel>
+          <Cell.Label>{messages.pgettext('filter-view', 'Ownership')}</Cell.Label>
+        </AriaLabel>
+        <ImageView
+          tintColor={colors.white80}
+          source={expanded ? 'icon-chevron-up' : 'icon-chevron-down'}
+          height={24}
+        />
+      </Cell.CellButton>
+
+      <Accordion expanded={expanded}>
+        <StyledSelector values={values} value={props.ownership} onSelect={props.setOwnership} />
+      </Accordion>
+    </AriaInputGroup>
+  );
 }
 
 interface IFilterByProviderProps {
