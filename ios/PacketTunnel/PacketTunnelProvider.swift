@@ -297,15 +297,10 @@ class PacketTunnelProvider: NEPacketTunnelProvider, TunnelMonitorDelegate {
     // MARK: - Private
 
     private func makeConfiguration(_ appSelectorResult: RelaySelectorResult? = nil) -> Result<PacketTunnelConfiguration, PacketTunnelProviderError> {
-        guard let passwordRef = protocolConfiguration.passwordReference else {
-            return .failure(.missingKeychainConfigurationReference)
-        }
-
-        let keychainEntry: TunnelSettingsManager.KeychainEntry
-        switch TunnelSettingsManager.load(searchTerm: .persistentReference(passwordRef)) {
-        case .success(let entry):
-            keychainEntry = entry
-        case .failure(let error):
+        let tunnelSettings: TunnelSettingsV2
+        do {
+            tunnelSettings = try TunnelSettingsManagerV2.readSettings()
+        } catch {
             return .failure(.cannotReadTunnelSettings(error))
         }
 
@@ -313,7 +308,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider, TunnelMonitorDelegate {
         if let appSelectorResult = appSelectorResult {
             selectorResult = appSelectorResult
         } else {
-            let relayConstraints = keychainEntry.tunnelSettings.relayConstraints
+            let relayConstraints = tunnelSettings.relayConstraints
             switch Self.selectRelayEndpoint(relayConstraints: relayConstraints) {
             case .success(let value):
                 selectorResult = value
@@ -323,7 +318,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider, TunnelMonitorDelegate {
         }
 
         let tunnelConfiguration = PacketTunnelConfiguration(
-            tunnelSettings: keychainEntry.tunnelSettings,
+            tunnelSettings: tunnelSettings,
             selectorResult: selectorResult
         )
 
@@ -437,11 +432,8 @@ enum PacketTunnelProviderError: ChainedError {
     /// Failure to satisfy the relay constraint
     case noRelaySatisfyingConstraint
 
-    /// Missing the persistent keychain reference to the tunnel settings
-    case missingKeychainConfigurationReference
-
     /// Failure to read the tunnel settings from Keychain
-    case cannotReadTunnelSettings(TunnelSettingsManager.Error)
+    case cannotReadTunnelSettings(Error)
 
     /// Failure to start the Wireguard backend
     case startWireguardAdapter(WireGuardAdapterError)
@@ -460,9 +452,6 @@ enum PacketTunnelProviderError: ChainedError {
         case .noRelaySatisfyingConstraint:
             return "No relay satisfying the given constraint."
 
-        case .missingKeychainConfigurationReference:
-            return "Keychain configuration reference is not set on protocol configuration."
-
         case .cannotReadTunnelSettings:
             return "Failure to read tunnel settings."
 
@@ -479,7 +468,7 @@ enum PacketTunnelProviderError: ChainedError {
 }
 
 struct PacketTunnelConfiguration {
-    var tunnelSettings: TunnelSettingsV1
+    var tunnelSettings: TunnelSettingsV2
     var selectorResult: RelaySelectorResult
 }
 
@@ -502,17 +491,17 @@ extension PacketTunnelConfiguration {
             return peerConfig
         }
 
-        var interfaceConfig = InterfaceConfiguration(privateKey: tunnelSettings.interface.privateKey.privateKey)
+        var interfaceConfig = InterfaceConfiguration(privateKey: tunnelSettings.device.privateKey.privateKey)
         interfaceConfig.listenPort = 0
         interfaceConfig.dns = dnsServers.map { DNSServer(address: $0) }
-        interfaceConfig.addresses = tunnelSettings.interface.addresses
+        interfaceConfig.addresses = tunnelSettings.device.addresses
 
         return TunnelConfiguration(name: nil, interface: interfaceConfig, peers: peerConfigs)
     }
 
     var dnsServers: [IPAddress] {
         let mullvadEndpoint = selectorResult.endpoint
-        let dnsSettings = tunnelSettings.interface.dnsSettings
+        let dnsSettings = tunnelSettings.dnsSettings
 
         if dnsSettings.effectiveEnableCustomDNS {
             let dnsServers = dnsSettings.customDNSDomains
