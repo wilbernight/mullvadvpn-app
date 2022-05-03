@@ -108,7 +108,7 @@ class LoginViewModelTest {
             loginViewModel.login(DUMMY_ACCOUNT_TOKEN)
             assertEquals(LoginViewModel.LoginUiState.Loading, awaitItem())
             loginTestEvents.emit(Event.LoginEvent(LoginResult.RpcError))
-            assertEquals(LoginViewModel.LoginUiState.OtherError("RpcError"), awaitItem())
+            assertEquals(LoginViewModel.LoginUiState.OtherError(EXPECTED_RPC_ERROR_MESSAGE), awaitItem())
         }
     }
 
@@ -120,7 +120,7 @@ class LoginViewModelTest {
             loginViewModel.login(DUMMY_ACCOUNT_TOKEN)
             assertEquals(LoginViewModel.LoginUiState.Loading, awaitItem())
             loginTestEvents.emit(Event.LoginEvent(LoginResult.OtherError))
-            assertEquals(LoginViewModel.LoginUiState.OtherError(OTHER_ERROR_MESSAGE), awaitItem())
+            assertEquals(LoginViewModel.LoginUiState.OtherError(EXPECTED_OTHER_ERROR_MESSAGE), awaitItem())
         }
     }
 
@@ -147,6 +147,7 @@ class LoginViewModelTest {
 
     companion object {
         private const val DUMMY_ACCOUNT_TOKEN = "DUMMY"
-        private const val OTHER_ERROR_MESSAGE = "OtherError"
+        private const val EXPECTED_RPC_ERROR_MESSAGE = "RpcError"
+        private const val EXPECTED_OTHER_ERROR_MESSAGE = "OtherError"
     }
 }
