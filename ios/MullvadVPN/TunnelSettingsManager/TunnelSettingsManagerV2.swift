@@ -25,7 +25,7 @@ extension TunnelSettingsManagerV2 {
         let status = SecItemCopyMatching(query as CFDictionary, &result)
 
         guard status == errSecSuccess else {
-            throw Keychain.Error(code: status)
+            throw KeychainError(code: status)
         }
 
         let dict = result as! [CFString: Any]
@@ -56,21 +56,21 @@ extension TunnelSettingsManagerV2 {
 
             status = SecItemAdd(insert as CFDictionary, nil)
             if status != errSecSuccess {
-                throw Keychain.Error(code: status)
+                throw KeychainError(code: status)
             }
 
         case errSecSuccess:
             break
 
         default:
-            throw Keychain.Error(code: status)
+            throw KeychainError(code: status)
         }
     }
 
     static func deleteSettings() throws {
         let status = SecItemDelete(defaultAttributes as CFDictionary)
         if status != errSecSuccess {
-            throw Keychain.Error(code: status)
+            throw KeychainError(code: status)
         }
     }
 }
