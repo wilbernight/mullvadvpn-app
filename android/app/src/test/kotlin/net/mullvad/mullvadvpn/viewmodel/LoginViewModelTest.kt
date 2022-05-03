@@ -59,7 +59,7 @@ class LoginViewModelTest {
             skipDefaultItem()
             loginViewModel.createAccount()
             assertEquals(LoginViewModel.LoginUiState.CreatingAccount, awaitItem())
-            accountCreationTestEvents.emit(AccountCreationResult.Success("dummy"))
+            accountCreationTestEvents.emit(AccountCreationResult.Success(DUMMY_ACCOUNT_TOKEN))
             assertEquals(LoginViewModel.LoginUiState.AccountCreated, awaitItem())
         }
     }
@@ -69,7 +69,7 @@ class LoginViewModelTest {
         loginViewModel.updateAccountCacheInstance(mockedAccountCache)
         loginViewModel.uiState.test {
             skipDefaultItem()
-            loginViewModel.login("")
+            loginViewModel.login(DUMMY_ACCOUNT_TOKEN)
             assertEquals(LoginViewModel.LoginUiState.Loading, awaitItem())
             loginTestEvents.emit(Event.LoginEvent(LoginResult.Ok))
             assertEquals(LoginViewModel.LoginUiState.Success(isOutOfTime = false), awaitItem())
@@ -81,7 +81,7 @@ class LoginViewModelTest {
         loginViewModel.updateAccountCacheInstance(mockedAccountCache)
         loginViewModel.uiState.test {
             skipDefaultItem()
-            loginViewModel.login("")
+            loginViewModel.login(DUMMY_ACCOUNT_TOKEN)
             assertEquals(LoginViewModel.LoginUiState.Loading, awaitItem())
             loginTestEvents.emit(Event.LoginEvent(LoginResult.InvalidAccount))
             assertEquals(LoginViewModel.LoginUiState.InvalidAccountError, awaitItem())
@@ -93,7 +93,7 @@ class LoginViewModelTest {
         loginViewModel.updateAccountCacheInstance(mockedAccountCache)
         loginViewModel.uiState.test {
             skipDefaultItem()
-            loginViewModel.login("")
+            loginViewModel.login(DUMMY_ACCOUNT_TOKEN)
             assertEquals(LoginViewModel.LoginUiState.Loading, awaitItem())
             loginTestEvents.emit(Event.LoginEvent(LoginResult.MaxDevicesReached))
             assertEquals(LoginViewModel.LoginUiState.TooManyDevicesError, awaitItem())
@@ -105,7 +105,7 @@ class LoginViewModelTest {
         loginViewModel.updateAccountCacheInstance(mockedAccountCache)
         loginViewModel.uiState.test {
             skipDefaultItem()
-            loginViewModel.login("")
+            loginViewModel.login(DUMMY_ACCOUNT_TOKEN)
             assertEquals(LoginViewModel.LoginUiState.Loading, awaitItem())
             loginTestEvents.emit(Event.LoginEvent(LoginResult.RpcError))
             assertEquals(LoginViewModel.LoginUiState.OtherError("RpcError"), awaitItem())
@@ -117,10 +117,10 @@ class LoginViewModelTest {
         loginViewModel.updateAccountCacheInstance(mockedAccountCache)
         loginViewModel.uiState.test {
             skipDefaultItem()
-            loginViewModel.login("")
+            loginViewModel.login(DUMMY_ACCOUNT_TOKEN)
             assertEquals(LoginViewModel.LoginUiState.Loading, awaitItem())
             loginTestEvents.emit(Event.LoginEvent(LoginResult.OtherError))
-            assertEquals(LoginViewModel.LoginUiState.OtherError("OtherError"), awaitItem())
+            assertEquals(LoginViewModel.LoginUiState.OtherError(OTHER_ERROR_MESSAGE), awaitItem())
         }
     }
 
@@ -147,5 +147,6 @@ class LoginViewModelTest {
 
     companion object {
         private const val DUMMY_ACCOUNT_TOKEN = "DUMMY"
+        private const val OTHER_ERROR_MESSAGE = "OtherError"
     }
 }
