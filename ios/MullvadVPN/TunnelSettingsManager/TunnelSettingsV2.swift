@@ -45,13 +45,13 @@ struct StoredDeviceData: Codable, Equatable {
 }
 
 struct TunnelSettingsV2: Codable, Equatable {
-    /// Mullvad account number.
+    /// Mullvad account data.
     var account: StoredAccountData
 
-    /// Device information.
+    /// Device data.
     var device: StoredDeviceData
 
-    /// Relay constraints
+    /// Relay constraints.
     var relayConstraints: RelayConstraints
 
     /// DNS settings.
