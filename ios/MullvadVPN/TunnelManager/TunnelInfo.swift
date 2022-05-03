@@ -14,5 +14,5 @@ struct TunnelInfo: Equatable {
     var token: String
 
     /// Tunnel settings
-    var tunnelSettings: TunnelSettingsV1
+    var tunnelSettings: TunnelSettingsV2
 }

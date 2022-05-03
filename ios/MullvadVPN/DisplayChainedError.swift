@@ -91,14 +91,6 @@ extension TunnelManager.Error: DisplayChainedError {
                 systemError.localizedDescription
             )
 
-        case .obtainPersistentKeychainReference(_):
-            return NSLocalizedString(
-                "OBTAIN_PERSISTENT_KEYCHAIN_REFERENCE_ERROR",
-                tableName: "TunnelManager",
-                value: "Failed to obtain the persistent keychain reference for the VPN configuration",
-                comment: ""
-            )
-
         case .startVPNTunnel(let systemError):
             return String(
                 format: NSLocalizedString(

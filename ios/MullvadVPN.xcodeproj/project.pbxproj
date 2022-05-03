@@ -177,7 +177,7 @@
 		587EB672271451E300123C75 /* PreferencesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 587EB671271451E300123C75 /* PreferencesViewModel.swift */; };
 		587EB6742714520600123C75 /* PreferencesDataSourceDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 587EB6732714520600123C75 /* PreferencesDataSourceDelegate.swift */; };
 		5883A09E266A5AF7003EFFCB /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 587B7543266922BF00DEF7E9 /* Localizable.strings */; };
-		588527B2276B3F0700BAA373 /* LoadTunnelOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 588527B1276B3F0700BAA373 /* LoadTunnelOperation.swift */; };
+		588527B2276B3F0700BAA373 /* LoadTunnelConfigurationOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 588527B1276B3F0700BAA373 /* LoadTunnelConfigurationOperation.swift */; };
 		588527B4276B4F2F00BAA373 /* SetAccountOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 588527B3276B4F2F00BAA373 /* SetAccountOperation.swift */; };
 		588527B6276B58B300BAA373 /* SetTunnelSettingsOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 588527B5276B58B300BAA373 /* SetTunnelSettingsOperation.swift */; };
 		58871D1E25D535A3002297FA /* WireGuardKit in Frameworks */ = {isa = PBXBuildFile; productRef = 58871D1D25D535A3002297FA /* WireGuardKit */; };
@@ -466,7 +466,7 @@
 		587EB66F27143B6500123C75 /* DataSourceSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataSourceSnapshot.swift; sourceTree = "<group>"; };
 		587EB671271451E300123C75 /* PreferencesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesViewModel.swift; sourceTree = "<group>"; };
 		587EB6732714520600123C75 /* PreferencesDataSourceDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesDataSourceDelegate.swift; sourceTree = "<group>"; };
-		588527B1276B3F0700BAA373 /* LoadTunnelOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadTunnelOperation.swift; sourceTree = "<group>"; };
+		588527B1276B3F0700BAA373 /* LoadTunnelConfigurationOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadTunnelConfigurationOperation.swift; sourceTree = "<group>"; };
 		588527B3276B4F2F00BAA373 /* SetAccountOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetAccountOperation.swift; sourceTree = "<group>"; };
 		588527B5276B58B300BAA373 /* SetTunnelSettingsOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetTunnelSettingsOperation.swift; sourceTree = "<group>"; };
 		5888AD82227B11080051EB06 /* SelectLocationCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectLocationCell.swift; sourceTree = "<group>"; };
@@ -688,7 +688,7 @@
 				5820676326E771DB00655B05 /* TunnelManagerError.swift */,
 				5823FA5326CE49F600283BF8 /* TunnelObserver.swift */,
 				58B93A1226C3F13600A55733 /* TunnelState.swift */,
-				588527B1276B3F0700BAA373 /* LoadTunnelOperation.swift */,
+				588527B1276B3F0700BAA373 /* LoadTunnelConfigurationOperation.swift */,
 				584B17AA27637DE40057F3B8 /* ReloadTunnelOperation.swift */,
 				588527B3276B4F2F00BAA373 /* SetAccountOperation.swift */,
 				58F2E143276A13F300A79513 /* StartTunnelOperation.swift */,
@@ -1321,7 +1321,7 @@
 				58A1AA8C23F5584C009F7EA6 /* ConnectionPanelView.swift in Sources */,
 				582BB1B52295780F0055B6EF /* AccountExpiry.swift in Sources */,
 				582BB1B3229574F40055B6EF /* SettingsAccountCell.swift in Sources */,
-				588527B2276B3F0700BAA373 /* LoadTunnelOperation.swift in Sources */,
+				588527B2276B3F0700BAA373 /* LoadTunnelConfigurationOperation.swift in Sources */,
 				58F1311527E0B2AB007AC5BC /* Result+Extensions.swift in Sources */,
 				585DA88426B0270700B8C587 /* ServerRelaysResponse.swift in Sources */,
 				5875960726F36B3A00BF6711 /* TunnelIPCError.swift in Sources */,

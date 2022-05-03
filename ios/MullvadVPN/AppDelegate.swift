@@ -103,7 +103,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
 
         // Load tunnels
-        TunnelManager.shared.loadTunnel(accountToken: Account.shared.token) { error in
+        TunnelManager.shared.loadConfiguration { error in
             dispatchPrecondition(condition: .onQueue(.main))
 
             if let error = error {

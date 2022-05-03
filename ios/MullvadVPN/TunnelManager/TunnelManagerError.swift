@@ -34,7 +34,7 @@ extension TunnelManager {
         case removeInconsistentVPNConfiguration(Swift.Error)
 
         /// A failure to read tunnel settings.
-        case readTunnelSettings(TunnelSettingsManager.Error)
+        case readTunnelSettings(Swift.Error)
 
         /// A failure to read relays cache.
         case readRelays(RelayCache.Error)
@@ -43,19 +43,13 @@ extension TunnelManager {
         case cannotSatisfyRelayConstraints
 
         /// A failure to add the tunnel settings.
-        case addTunnelSettings(TunnelSettingsManager.Error)
+        case addTunnelSettings(Swift.Error)
 
         /// A failure to update the tunnel settings.
-        case updateTunnelSettings(TunnelSettingsManager.Error)
+        case updateTunnelSettings(Swift.Error)
 
         /// A failure to remove the tunnel settings from Keychain.
-        case removeTunnelSettings(TunnelSettingsManager.Error)
-
-        /// A failure to migrate tunnel settings.
-        case migrateTunnelSettings(TunnelSettingsManager.Error)
-
-        /// Unable to obtain the persistent keychain reference for the tunnel settings.
-        case obtainPersistentKeychainReference(TunnelSettingsManager.Error)
+        case removeTunnelSettings(Swift.Error)
 
         /// A failure to push the public WireGuard key.
         case pushWireguardKey(REST.Error)
@@ -100,10 +94,6 @@ extension TunnelManager {
                 return "Failed to update the tunnel settings."
             case .removeTunnelSettings:
                 return "Failed to remove the tunnel settings."
-            case .migrateTunnelSettings:
-                return "Failed to migrate the tunnel settings."
-            case .obtainPersistentKeychainReference:
-                return "Failed to obtain the persistent keychain reference."
             case .pushWireguardKey:
                 return "Failed to push the WireGuard key to server."
             case .replaceWireguardKey:
