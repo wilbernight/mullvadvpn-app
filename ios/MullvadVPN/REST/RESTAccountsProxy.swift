@@ -40,7 +40,7 @@ extension REST {
 
                     requestBuilder.setAuthorization(authorization)
 
-                    return .success(requestBuilder.getURLRequest())
+                    return requestBuilder.getURLRequest()
                 },
                 requestAuthorization: { completion in
                     return self.configuration.accessTokenManager

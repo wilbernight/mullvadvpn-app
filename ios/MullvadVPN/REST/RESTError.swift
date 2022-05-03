@@ -12,8 +12,8 @@ extension REST {
 
     /// An error type returned by REST API classes.
     enum Error: ChainedError {
-        /// A failure to encode the payload
-        case encodePayload(Swift.Error)
+        /// A failure to create URL request.
+        case createURLRequest(Swift.Error)
 
         /// A failure during networking
         case network(URLError)
@@ -29,8 +29,8 @@ extension REST {
 
         var errorDescription: String? {
             switch self {
-            case .encodePayload:
-                return "Failure to encode the payload."
+            case .createURLRequest:
+                return "Failure to create URL request."
             case .network:
                 return "Network error."
             case .server:

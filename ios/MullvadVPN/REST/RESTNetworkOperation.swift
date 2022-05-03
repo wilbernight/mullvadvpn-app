@@ -119,17 +119,15 @@ extension REST {
 
             let endpoint = self.addressCacheStore.getCurrentEndpoint()
 
-            let result = requestHandler.createURLRequest(
-                endpoint: endpoint,
-                authorization: authorization
-            )
+            do {
+                let request = try requestHandler.createURLRequest(
+                    endpoint: endpoint,
+                    authorization: authorization
+                )
 
-            switch result {
-            case .success(let request):
                 didReceiveURLRequest(request, endpoint: endpoint)
-
-            case .failure(let error):
-                didFailToCreateURLRequest(error)
+            } catch {
+                didFailToCreateURLRequest(.createURLRequest(error))
             }
         }
 

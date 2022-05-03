@@ -377,7 +377,7 @@ private extension LoginState {
 
                         return message
 
-                    case .encodePayload, .decodeErrorResponse, .decodeSuccessResponse:
+                    case .createURLRequest, .decodeErrorResponse, .decodeSuccessResponse:
                         return localizedUnknownInternalError
                     }
                 } else {

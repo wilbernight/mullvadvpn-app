@@ -37,17 +37,11 @@ extension REST {
                     path: "/token"
                 )
 
-                return Result {
-                    let request = AccessTokenRequest(accountNumber: accountNumber)
+                let request = AccessTokenRequest(accountNumber: accountNumber)
 
-                    try requestBuilder.setHTTPBody(value: request)
-                }
-                .mapError { error in
-                    return .encodePayload(error)
-                }
-                .map { _ in
-                    return requestBuilder.getURLRequest()
-                }
+                try requestBuilder.setHTTPBody(value: request)
+
+                return requestBuilder.getURLRequest()
             }
 
             let responseHandler = REST.defaultResponseHandler(

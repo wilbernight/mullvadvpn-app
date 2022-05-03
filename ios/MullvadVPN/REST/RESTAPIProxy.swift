@@ -34,13 +34,11 @@ extension REST {
         ) -> Cancellable
         {
             let requestHandler = AnyRequestHandler { endpoint in
-                let request = self.requestFactory.createURLRequest(
+                return self.requestFactory.createURLRequest(
                     endpoint: endpoint,
                     method: .post,
                     path: "accounts"
                 )
-
-                return .success(request)
             }
 
             let responseHandler = REST.defaultResponseHandler(
@@ -63,13 +61,11 @@ extension REST {
         ) -> Cancellable
         {
             let requestHandler = AnyRequestHandler { endpoint in
-                let request = self.requestFactory.createURLRequest(
+                return self.requestFactory.createURLRequest(
                     endpoint: endpoint,
                     method: .get,
                     path: "api-addrs"
                 )
-
-                return .success(request)
             }
 
             let responseHandler = REST.defaultResponseHandler(
@@ -103,7 +99,7 @@ extension REST {
                     requestBuilder.setETagHeader(etag: etag)
                 }
 
-                return .success(requestBuilder.getURLRequest())
+                return requestBuilder.getURLRequest()
             }
 
             let responseHandler = AnyResponseHandler { response, data -> Result<ServerRelaysCacheResponse, REST.Error> in
@@ -145,7 +141,7 @@ extension REST {
                     )
                 requestBuilder.setAuthorization(.accountNumber(accountNumber))
 
-                return .success(requestBuilder.getURLRequest())
+                return requestBuilder.getURLRequest()
             }
 
             let responseHandler = REST.defaultResponseHandler(
@@ -183,7 +179,7 @@ extension REST {
                     )
                 requestBuilder.setAuthorization(.accountNumber(accountNumber))
 
-                return .success(requestBuilder.getURLRequest())
+                return requestBuilder.getURLRequest()
             }
 
             let responseHandler = REST.defaultResponseHandler(
@@ -216,18 +212,13 @@ extension REST {
                 )
                 requestBuilder.setAuthorization(.accountNumber(accountNumber))
 
-                return Result {
-                    let body = PushWireguardKeyRequest(
-                        pubkey: publicKey.rawValue
-                    )
-                    try requestBuilder.setHTTPBody(value: body)
-                }
-                .mapError { error in
-                    return .encodePayload(error)
-                }
-                .map { _ in
-                    return requestBuilder.getURLRequest()
-                }
+                let body = PushWireguardKeyRequest(
+                    pubkey: publicKey.rawValue
+                )
+
+                try requestBuilder.setHTTPBody(value: body)
+
+                return requestBuilder.getURLRequest()
             }
 
             let responseHandler = REST.defaultResponseHandler(
@@ -261,19 +252,13 @@ extension REST {
                 )
                 requestBuilder.setAuthorization(.accountNumber(accountNumber))
 
-                return Result {
-                    let body = ReplaceWireguardKeyRequest(
-                        old: oldPublicKey.rawValue,
-                        new: newPublicKey.rawValue
-                    )
-                    try requestBuilder.setHTTPBody(value: body)
-                }
-                .mapError { error in
-                    return .encodePayload(error)
-                }
-                .map { _ in
-                    return requestBuilder.getURLRequest()
-                }
+                let body = ReplaceWireguardKeyRequest(
+                    old: oldPublicKey.rawValue,
+                    new: newPublicKey.rawValue
+                )
+                try requestBuilder.setHTTPBody(value: body)
+
+                return requestBuilder.getURLRequest()
             }
 
             let responseHandler = REST.defaultResponseHandler(
@@ -311,7 +296,7 @@ extension REST {
                     )
                 requestBuilder.setAuthorization(.accountNumber(accountNumber))
 
-                return .success(requestBuilder.getURLRequest())
+                return requestBuilder.getURLRequest()
             }
 
             let responseHandler = AnyResponseHandler { response, data -> Result<Void, REST.Error> in
@@ -347,18 +332,12 @@ extension REST {
                     )
                 requestBuilder.setAuthorization(.accountNumber(accountNumber))
 
-                return Result {
-                    let body = CreateApplePaymentRequest(
-                        receiptString: receiptString
-                    )
-                    try requestBuilder.setHTTPBody(value: body)
-                }
-                .mapError { error in
-                    return .encodePayload(error)
-                }
-                .map { _ in
-                    return requestBuilder.getURLRequest()
-                }
+                let body = CreateApplePaymentRequest(
+                    receiptString: receiptString
+                )
+                try requestBuilder.setHTTPBody(value: body)
+
+                return requestBuilder.getURLRequest()
             }
 
             let responseHandler = AnyResponseHandler { response, data -> Result<CreateApplePaymentResponse, REST.Error> in
@@ -398,15 +377,9 @@ extension REST {
                     path: "problem-report"
                 )
 
-                return Result {
-                    try requestBuilder.setHTTPBody(value: body)
-                }
-                .mapError { error in
-                    return .encodePayload(error)
-                }
-                .map { _ in
-                    return requestBuilder.getURLRequest()
-                }
+                try requestBuilder.setHTTPBody(value: body)
+
+                return requestBuilder.getURLRequest()
             }
 
             let responseHandler = AnyResponseHandler { response, data -> Result<Void, REST.Error> in
