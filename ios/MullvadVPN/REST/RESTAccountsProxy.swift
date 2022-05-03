@@ -33,7 +33,7 @@ extension REST {
                     var requestBuilder = self.requestFactory.createURLRequestBuilder(
                         endpoint: endpoint,
                         method: .get,
-                        path: "/accounts/me"
+                        path: "accounts/me"
                     )
 
                     requestBuilder.setAuthorization(authorization)

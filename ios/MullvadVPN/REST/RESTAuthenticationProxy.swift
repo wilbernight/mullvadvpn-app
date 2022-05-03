@@ -32,7 +32,7 @@ extension REST {
                 var requestBuilder = self.requestFactory.createURLRequestBuilder(
                     endpoint: endpoint,
                     method: .post,
-                    path: "/token"
+                    path: "token"
                 )
 
                 let request = AccessTokenRequest(accountNumber: accountNumber)

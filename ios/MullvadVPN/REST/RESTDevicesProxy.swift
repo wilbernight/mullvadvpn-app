@@ -35,7 +35,7 @@ extension REST {
                     var requestBuilder = self.requestFactory.createURLRequestBuilder(
                         endpoint: endpoint,
                         method: .get,
-                        path: "/devices"
+                        path: "devices"
                     )
 
                     requestBuilder.setAuthorization(authorization)
