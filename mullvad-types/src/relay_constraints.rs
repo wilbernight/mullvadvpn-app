@@ -318,6 +318,13 @@ impl Set<LocationConstraint> for LocationConstraint {
     }
 }
 
+/// Limits the set of servers to choose based on ownership.
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+pub enum Ownership {
+    MullvadOwned,
+    Rented,
+}
+
 /// Limits the set of [`crate::relay_list::Relay`]s used by a `RelaySelector` based on
 /// provider.
 pub type Provider = String;
