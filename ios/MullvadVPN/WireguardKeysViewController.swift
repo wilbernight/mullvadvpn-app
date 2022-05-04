@@ -118,7 +118,7 @@ class WireguardKeysViewController: UIViewController, TunnelObserver {
     private func copyPublicKey() {
         guard let tunnelInfo = TunnelManager.shared.tunnelInfo else { return }
 
-        let metadata = tunnelInfo.tunnelSettings.interface.privateKey.publicKeyWithMetadata
+        let metadata = tunnelInfo.tunnelSettings.device.privateKey.publicKeyWithMetadata
 
         UIPasteboard.general.string = metadata.stringRepresentation()
 
@@ -161,8 +161,8 @@ class WireguardKeysViewController: UIViewController, TunnelObserver {
         contentView.creationRowView.value = formatKeyGenerationElapsedTime(with: creationDate) ?? "-"
     }
 
-    private func updatePublicKey(tunnelSettings: TunnelSettingsV1?, animated: Bool) {
-        if let publicKey = tunnelSettings?.interface.privateKey.publicKeyWithMetadata {
+    private func updatePublicKey(tunnelSettings: TunnelSettingsV2?, animated: Bool) {
+        if let publicKey = tunnelSettings?.device.privateKey.publicKeyWithMetadata {
             let displayKey = publicKey
                 .stringRepresentation(maxLength: kDisplayPublicKeyMaxLength)
 
@@ -217,7 +217,7 @@ class WireguardKeysViewController: UIViewController, TunnelObserver {
 
         verifyKeyCancellable = apiProxy.getWireguardKey(
             accountNumber: tunnelInfo.token,
-            publicKey: tunnelInfo.tunnelSettings.interface.publicKey,
+            publicKey: tunnelInfo.tunnelSettings.device.publicKey,
             retryStrategy: .default
         ) { [weak self] result in
             guard let self = self else { return }

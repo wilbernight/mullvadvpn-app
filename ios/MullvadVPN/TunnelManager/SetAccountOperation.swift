@@ -56,8 +56,8 @@ class SetAccountOperation: ResultOperation<(), TunnelManager.Error> {
         // Delete current account key and configuration if set.
         if let tunnelInfo = state.tunnelInfo, tunnelInfo.token != accountToken {
             let currentAccountToken = tunnelInfo.token
-            let currentPublicKey = tunnelInfo.tunnelSettings.interface.publicKey
-            let nextPublicKey = tunnelInfo.tunnelSettings.interface.nextPrivateKey?.publicKey
+            let currentPublicKey = tunnelInfo.tunnelSettings.device.publicKey
+            let nextPublicKey = tunnelInfo.tunnelSettings.device.nextPrivateKey?.publicKey
 
             logger.debug("Unset current account token.")
 

@@ -13,8 +13,8 @@ class ReplaceKeyOperation: ResultOperation<TunnelManager.KeyRotationResult, Tunn
     private let queue: DispatchQueue
     private let state: TunnelManager.State
 
-    private let apiProxy: REST.APIProxy
-    private var restRequest: Cancellable?
+    private let devicesProxy: REST.DevicesProxy
+    private var task: Cancellable?
 
     private let rotationInterval: TimeInterval?
 
@@ -23,14 +23,14 @@ class ReplaceKeyOperation: ResultOperation<TunnelManager.KeyRotationResult, Tunn
     class func operationForKeyRotation(
         queue: DispatchQueue,
         state: TunnelManager.State,
-        apiProxy: REST.APIProxy,
+        devicesProxy: REST.DevicesProxy,
         rotationInterval: TimeInterval,
         completionHandler: @escaping CompletionHandler
     ) -> ReplaceKeyOperation {
         return ReplaceKeyOperation(
             queue: queue,
             state: state,
-            apiProxy: apiProxy,
+            devicesProxy: devicesProxy,
             rotationInterval: rotationInterval,
             completionHandler: completionHandler
         )
@@ -39,13 +39,13 @@ class ReplaceKeyOperation: ResultOperation<TunnelManager.KeyRotationResult, Tunn
     class func operationForKeyRegeneration(
         queue: DispatchQueue,
         state: TunnelManager.State,
-        apiProxy: REST.APIProxy,
+        devicesProxy: REST.DevicesProxy,
         completionHandler: @escaping (OperationCompletion<(), TunnelManager.Error>) -> Void
     ) -> ReplaceKeyOperation {
         return ReplaceKeyOperation(
             queue: queue,
             state: state,
-            apiProxy: apiProxy,
+            devicesProxy: devicesProxy,
             rotationInterval: nil
         ) { completion in
             let mappedCompletion = completion.map { keyRotationResult -> () in
@@ -64,14 +64,14 @@ class ReplaceKeyOperation: ResultOperation<TunnelManager.KeyRotationResult, Tunn
     private init(
         queue: DispatchQueue,
         state: TunnelManager.State,
-        apiProxy: REST.APIProxy,
+        devicesProxy: REST.DevicesProxy,
         rotationInterval: TimeInterval?,
         completionHandler: @escaping CompletionHandler
     ) {
         self.queue = queue
         self.state = state
 
-        self.apiProxy = apiProxy
+        self.devicesProxy = devicesProxy
         self.rotationInterval = rotationInterval
 
         super.init(completionQueue: queue, completionHandler: completionHandler)
@@ -79,8 +79,113 @@ class ReplaceKeyOperation: ResultOperation<TunnelManager.KeyRotationResult, Tunn
 
     override func main() {
         queue.async {
-            self.execute { completion in
-                self.finish(completion: completion)
+            guard !self.isCancelled else {
+                self.finish(completion: .cancelled)
+                return
+            }
+
+            guard let tunnelInfo = self.state.tunnelInfo else {
+                self.finish(completion: .failure(.unsetAccount))
+                return
+            }
+
+            if let rotationInterval = self.rotationInterval {
+                let creationDate = tunnelInfo.tunnelSettings.device.privateKey.creationDate
+                let nextRotationDate = creationDate.addingTimeInterval(rotationInterval)
+
+                if nextRotationDate > Date() {
+                    self.logger.debug("Throttle private key rotation.")
+
+                    self.finish(completion: .success(.throttled(creationDate)))
+                    return
+                } else {
+                    self.logger.debug("Private key is old enough, rotate right away.")
+                }
+            } else {
+                self.logger.debug("Rotate private key right away.")
+            }
+
+            let newPrivateKey: PrivateKeyWithMetadata
+
+            if let nextPrivateKey = tunnelInfo.tunnelSettings.device.nextPrivateKey {
+                newPrivateKey = nextPrivateKey
+
+                self.logger.debug("Next private key is already created.")
+            } else {
+                newPrivateKey = PrivateKeyWithMetadata()
+
+                self.logger.debug("Create next private key.")
+
+                do {
+                    var newTunnelSettings = tunnelInfo.tunnelSettings
+
+                    newTunnelSettings.device.nextPrivateKey = newPrivateKey
+
+                    try TunnelSettingsManagerV2.writeSettings(newTunnelSettings)
+
+                    self.logger.debug("Saved next private key.")
+
+                    self.state.tunnelInfo?.tunnelSettings = newTunnelSettings
+                } catch {
+                    self.logger.error(chainedError: AnyChainedError(error), message: "Failed to save next private key.")
+
+                    self.finish(completion: .failure(.updateTunnelSettings(error)))
+                    return
+                }
+            }
+
+            self.logger.debug("Replacing old key with new key on server...")
+
+            self.task = self.devicesProxy.rotateDeviceKey(
+                accountNumber: tunnelInfo.tunnelSettings.account.number,
+                identifier: tunnelInfo.tunnelSettings.device.identifier,
+                publicKey: newPrivateKey.publicKey,
+                retryStrategy: .default
+            ) { completion in
+                self.queue.async {
+                    switch completion {
+                    case .success(let associatedAddresses):
+                        self.logger.debug("Replaced old key with new key on server.")
+
+                        do {
+                            var tunnelSettings = tunnelInfo.tunnelSettings
+                            tunnelSettings.device.privateKey = newPrivateKey
+                            tunnelSettings.device.nextPrivateKey = nil
+                            tunnelSettings.device.addresses = [
+                                associatedAddresses.ipv4Address,
+                                associatedAddresses.ipv6Address
+                            ]
+
+                            try TunnelSettingsManagerV2.writeSettings(tunnelSettings)
+
+                            self.logger.debug("Saved associated addresses.")
+
+                            self.state.tunnelInfo?.tunnelSettings = tunnelSettings
+
+                            self.finish(completion: .success(.finished))
+                        } catch {
+                            self.logger.error(
+                                chainedError: AnyChainedError(error),
+                                message: "Failed to write tunnel settings."
+                            )
+
+                            self.finish(completion: .failure(.updateTunnelSettings(error)))
+                        }
+
+                    case .failure(let restError):
+                        self.logger.error(
+                            chainedError: restError,
+                            message: "Failed to replace old key with new key on server."
+                        )
+
+                        self.finish(completion: .failure(.replaceWireguardKey(restError)))
+
+                    case .cancelled:
+                        self.logger.debug("Cancelled replace key request.")
+
+                        self.finish(completion: .cancelled)
+                    }
+                }
             }
         }
     }
@@ -89,124 +194,7 @@ class ReplaceKeyOperation: ResultOperation<TunnelManager.KeyRotationResult, Tunn
         super.cancel()
 
         queue.async {
-            self.restRequest?.cancel()
-        }
-    }
-
-    private func execute(completionHandler: @escaping CompletionHandler) {
-        guard !isCancelled else {
-            completionHandler(.cancelled)
-            return
-        }
-
-        guard let tunnelInfo = state.tunnelInfo else {
-            completionHandler(.failure(.unsetAccount))
-            return
-        }
-
-        if let rotationInterval = rotationInterval {
-            let creationDate = tunnelInfo.tunnelSettings.interface.privateKey.creationDate
-            let nextRotationDate = creationDate.addingTimeInterval(rotationInterval)
-
-            if nextRotationDate > Date() {
-                logger.debug("Throttle private key rotation.")
-
-                completionHandler(.success(.throttled(creationDate)))
-                return
-            } else {
-                logger.debug("Private key is old enough, rotate right away.")
-            }
-        } else {
-            logger.debug("Rotate private key right away.")
-        }
-
-        let newPrivateKey: PrivateKeyWithMetadata
-        let oldPublicKey = tunnelInfo.tunnelSettings.interface.publicKey
-
-        if let nextPrivateKey = tunnelInfo.tunnelSettings.interface.nextPrivateKey {
-            newPrivateKey = nextPrivateKey
-
-            logger.debug("Next private key is already created.")
-        } else {
-            newPrivateKey = PrivateKeyWithMetadata()
-
-            logger.debug("Create next private key.")
-
-            let saveResult = TunnelSettingsManager.update(searchTerm: .accountToken(tunnelInfo.token)) { newTunnelSettings in
-                newTunnelSettings.interface.nextPrivateKey = newPrivateKey
-            }
-
-            switch saveResult {
-            case .success(let newTunnelSettings):
-                logger.debug("Saved next private key.")
-
-                state.tunnelInfo?.tunnelSettings = newTunnelSettings
-
-            case .failure(let error):
-                logger.error(chainedError: error, message: "Failed to save next private key.")
-
-                completionHandler(.failure(.updateTunnelSettings(error)))
-                return
-            }
-        }
-
-        logger.debug("Replacing old key with new key on server...")
-
-        restRequest = self.apiProxy.replaceWireguardKey(
-            accountNumber: tunnelInfo.token,
-            oldPublicKey: oldPublicKey,
-            newPublicKey: newPrivateKey.publicKey,
-            retryStrategy: .default
-        ) { completion in
-            self.queue.async {
-                self.didReceiveResponse(
-                    completion: completion,
-                    accountToken: tunnelInfo.token,
-                    newPrivateKey: newPrivateKey,
-                    completionHandler: completionHandler
-                )
-            }
-        }
-    }
-
-    private func didReceiveResponse(completion: OperationCompletion<REST.WireguardAddressesResponse, REST.Error>, accountToken: String, newPrivateKey: PrivateKeyWithMetadata, completionHandler: @escaping CompletionHandler) {
-        switch completion {
-        case .success(let associatedAddresses):
-            logger.debug("Replaced old key with new key on server.")
-
-            let saveResult = TunnelSettingsManager.update(searchTerm: .accountToken(accountToken)) { newTunnelSettings in
-                newTunnelSettings.interface.privateKey = newPrivateKey
-                newTunnelSettings.interface.nextPrivateKey = nil
-
-                newTunnelSettings.interface.addresses = [
-                    associatedAddresses.ipv4Address,
-                    associatedAddresses.ipv6Address
-                ]
-            }
-
-            switch saveResult {
-            case .success(let newTunnelSettings):
-                logger.debug("Saved associated addresses.")
-
-                state.tunnelInfo?.tunnelSettings = newTunnelSettings
-
-                completionHandler(.success(.finished))
-
-            case .failure(let error):
-                logger.error(chainedError: error, message: "Failed to save associated addresses.")
-
-                completionHandler(.failure(.updateTunnelSettings(error)))
-            }
-
-        case .failure(let restError):
-            logger.error(chainedError: restError, message: "Failed to replace old key with new key on server.")
-
-            completionHandler(.failure(.replaceWireguardKey(restError)))
-
-        case .cancelled:
-            logger.debug("Cancelled replace key request.")
-
-            completionHandler(.cancelled)
+            self.task?.cancel()
         }
     }
 }

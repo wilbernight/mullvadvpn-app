@@ -47,12 +47,16 @@ final class TunnelManager: TunnelManagerStateDelegate {
     }
 
     static let shared: TunnelManager = {
-        return TunnelManager(apiProxy: REST.ProxyFactory.shared.createAPIProxy())
+        return TunnelManager(
+            apiProxy: REST.ProxyFactory.shared.createAPIProxy(),
+            devicesProxy: REST.ProxyFactory.shared.createDevicesProxy()
+        )
     }()
 
     // MARK: - Internal variables
 
     private let apiProxy: REST.APIProxy
+    private let devicesProxy: REST.DevicesProxy
 
     private let logger = Logger(label: "TunnelManager")
     private let stateQueue = DispatchQueue(label: "TunnelManager.stateQueue")
@@ -80,8 +84,9 @@ final class TunnelManager: TunnelManagerStateDelegate {
         return state.tunnelStatus.state
     }
 
-    private init(apiProxy: REST.APIProxy) {
+    private init(apiProxy: REST.APIProxy, devicesProxy: REST.DevicesProxy) {
         self.apiProxy = apiProxy
+        self.devicesProxy = devicesProxy
         self.state = TunnelManager.State(queue: stateQueue)
         self.state.delegate = self
 
@@ -126,7 +131,7 @@ final class TunnelManager: TunnelManagerStateDelegate {
         guard self.isRunningPeriodicPrivateKeyRotation else { return }
 
         if let tunnelInfo = self.state.tunnelInfo {
-            let creationDate = tunnelInfo.tunnelSettings.interface.privateKey.creationDate
+            let creationDate = tunnelInfo.tunnelSettings.device.privateKey.creationDate
             let scheduleDate = Date(timeInterval: TunnelManagerConfiguration.privateKeyRotationInterval, since: creationDate)
 
             schedulePrivateKeyRotationTimer(scheduleDate)
@@ -346,7 +351,7 @@ final class TunnelManager: TunnelManagerStateDelegate {
     }
 
     func regeneratePrivateKey(completionHandler: ((TunnelManager.Error?) -> Void)? = nil) {
-        let operation = ReplaceKeyOperation.operationForKeyRegeneration(queue: stateQueue, state: state, apiProxy: apiProxy) { [weak self] completion in
+        let operation = ReplaceKeyOperation.operationForKeyRegeneration(queue: stateQueue, state: state, devicesProxy: devicesProxy) { [weak self] completion in
             guard let self = self else { return }
 
             dispatchPrecondition(condition: .onQueue(self.stateQueue))
@@ -385,7 +390,7 @@ final class TunnelManager: TunnelManagerStateDelegate {
         let operation = ReplaceKeyOperation.operationForKeyRotation(
             queue: stateQueue,
             state: state,
-            apiProxy: apiProxy,
+            devicesProxy: devicesProxy,
             rotationInterval: TunnelManagerConfiguration.privateKeyRotationInterval
         ) { [weak self] completion in
             guard let self = self else { return }
@@ -441,7 +446,7 @@ final class TunnelManager: TunnelManagerStateDelegate {
         scheduleTunnelSettingsUpdate(
             taskName: "Set DNS settings",
             modificationBlock: { tunnelSettings in
-                tunnelSettings.interface.dnsSettings = newDNSSettings
+                tunnelSettings.dnsSettings = newDNSSettings
             },
             completionHandler: completionHandler
         )
@@ -751,7 +756,7 @@ extension TunnelManager {
     /// Schedule background task relative to the private key creation date.
     func scheduleBackgroundTask() -> Result<(), TunnelManager.Error> {
         if let tunnelInfo = self.state.tunnelInfo {
-            let creationDate = tunnelInfo.tunnelSettings.interface.privateKey.creationDate
+            let creationDate = tunnelInfo.tunnelSettings.device.privateKey.creationDate
             let beginDate = Date(timeInterval: TunnelManagerConfiguration.privateKeyRotationInterval, since: creationDate)
 
             return submitBackgroundTask(at: beginDate)
