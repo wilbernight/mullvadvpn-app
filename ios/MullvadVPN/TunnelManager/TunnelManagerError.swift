@@ -51,14 +51,14 @@ extension TunnelManager {
         /// A failure to remove the tunnel settings from Keychain.
         case removeTunnelSettings(Swift.Error)
 
-        /// A failure to push the public WireGuard key.
-        case pushWireguardKey(REST.Error)
+        /// A failure to create device.
+        case createDevice(REST.Error)
 
         /// A failure to replace the public WireGuard key.
         case replaceWireguardKey(REST.Error)
 
-        /// A failure to remove the public WireGuard key.
-        case removeWireguardKey(REST.Error)
+        /// A failure to delete device.
+        case deleteDevice(REST.Error)
 
         /// A failure to schedule background task.
         case backgroundTaskScheduler(Swift.Error)
@@ -94,12 +94,12 @@ extension TunnelManager {
                 return "Failed to update the tunnel settings."
             case .removeTunnelSettings:
                 return "Failed to remove the tunnel settings."
-            case .pushWireguardKey:
-                return "Failed to push the WireGuard key to server."
+            case .createDevice:
+                return "Failed to create a device."
             case .replaceWireguardKey:
                 return "Failed to replace the WireGuard key on server."
-            case .removeWireguardKey:
-                return "Failed to remove the WireGuard key from server."
+            case .deleteDevice:
+                return "Failed to delete a device."
             case .backgroundTaskScheduler:
                 return "Failed to schedule background task."
             case .reloadTunnel:

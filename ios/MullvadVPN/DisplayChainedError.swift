@@ -156,32 +156,16 @@ extension TunnelManager.Error: DisplayChainedError {
                 comment: ""
             )
 
-        case .pushWireguardKey(let restError):
-            let reason = restError.errorChainDescription ?? ""
-            var message = String(
+        case .createDevice(let restError):
+            return String(
                 format: NSLocalizedString(
-                    "PUSH_WIREGUARD_KEY_ERROR",
+                    "CREATE_DEVICE_ERROR",
                     tableName: "TunnelManager",
-                    value: "Failed to send the WireGuard key to server: %@",
+                    value: "Failed to create a device: %@",
                     comment: ""
                 ),
-                reason
+                restError.errorChainDescription ?? ""
             )
-
-            if case .unhandledResponse(_, let serverErrorResponse) = restError,
-                serverErrorResponse?.code == .keyLimitReached
-            {
-                // TODO: maybe use `restError.recoverySuggestion` instead?
-                message.append("\n\n")
-                message.append(NSLocalizedString(
-                    "PUSH_WIREGUARD_KEY_RECOVERY_SUGGESTION",
-                    tableName: "TunnelManager",
-                    value: "Remove unused WireGuard keys and try again",
-                    comment: ""
-                ))
-            }
-
-            return message
 
         case .replaceWireguardKey(let restError):
             let reason = restError.errorChainDescription ?? ""
@@ -210,7 +194,7 @@ extension TunnelManager.Error: DisplayChainedError {
 
             return message
 
-        case .removeWireguardKey:
+        case .deleteDevice:
             // This error is never displayed anywhere
             return nil
 

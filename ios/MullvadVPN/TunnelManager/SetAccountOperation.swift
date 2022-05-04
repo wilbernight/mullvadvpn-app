@@ -15,8 +15,9 @@ class SetAccountOperation: ResultOperation<(), TunnelManager.Error> {
 
     private let queue: DispatchQueue
     private let state: TunnelManager.State
-    private let apiProxy: REST.APIProxy
-    private let accountToken: String?
+    private let devicesProxy: REST.DevicesProxy
+    private let accountNumber: String?
+    private var task: Cancellable?
 
     private var willDeleteVPNConfigurationHandler: WillDeleteVPNConfigurationHandler?
     private let logger = Logger(label: "TunnelManager.SetAccountOperation")
@@ -24,16 +25,16 @@ class SetAccountOperation: ResultOperation<(), TunnelManager.Error> {
     init(
         queue: DispatchQueue,
         state: TunnelManager.State,
-        apiProxy: REST.APIProxy,
-        accountToken: String?,
+        devicesProxy: REST.DevicesProxy,
+        accountNumber: String?,
         willDeleteVPNConfigurationHandler: @escaping WillDeleteVPNConfigurationHandler,
         completionHandler: @escaping CompletionHandler
     )
     {
         self.queue = queue
         self.state = state
-        self.apiProxy = apiProxy
-        self.accountToken = accountToken
+        self.devicesProxy = devicesProxy
+        self.accountNumber = accountNumber
         self.willDeleteVPNConfigurationHandler = willDeleteVPNConfigurationHandler
 
         super.init(completionQueue: queue, completionHandler: completionHandler)
@@ -41,145 +42,155 @@ class SetAccountOperation: ResultOperation<(), TunnelManager.Error> {
 
     override func main() {
         queue.async {
-            self.execute { completion in
-                self.finish(completion: completion)
+            guard !self.isCancelled else {
+                self.finish(completion: .cancelled)
+                return
             }
-        }
-    }
 
-    private func execute(completionHandler: @escaping CompletionHandler) {
-        guard !isCancelled else {
-            completionHandler(.cancelled)
-            return
-        }
+            if let tunnelInfo = self.state.tunnelInfo {
+                self.logger.debug("Delete current device...")
 
-        // Delete current account key and configuration if set.
-        if let tunnelInfo = state.tunnelInfo, tunnelInfo.token != accountToken {
-            let currentAccountToken = tunnelInfo.token
-            let currentPublicKey = tunnelInfo.tunnelSettings.device.publicKey
-            let nextPublicKey = tunnelInfo.tunnelSettings.device.nextPrivateKey?.publicKey
+                let tunnelSettings = tunnelInfo.tunnelSettings
 
-            logger.debug("Unset current account token.")
+                let handleCompletion = { (_ completion: OperationCompletion<Bool, REST.Error>) in
+                    switch completion {
+                    case .success(let isDeleted):
+                        if isDeleted {
+                            self.logger.debug("Deleted device.")
+                        } else {
+                            self.logger.debug("Device is already deleted.")
+                        }
 
-            let publicKeys = [currentPublicKey, nextPublicKey].compactMap { $0 }
+                        self.deleteKeychainEntryAndVPNConfiguration { error in
+                            if let error = error {
+                                self.finish(completion: .failure(error))
+                            } else {
+                                self.createDevice { completion in
+                                    self.finish(completion: completion)
+                                }
+                            }
+                        }
 
-            deletePublicKeys(publicKeys, accountToken: currentAccountToken) {
-                self.deleteKeychainEntryAndVPNConfiguration(accountToken: currentAccountToken) {
-                    self.setNewAccount(completionHandler: completionHandler)
+                    case .failure(let error):
+                        self.logger.error(chainedError: error, message: "Failed to delete a device.")
+                        self.finish(completion: .failure(.deleteDevice(error)))
+
+                    case .cancelled:
+                        self.logger.debug("Device deletion was cancelled.")
+                        self.finish(completion: .cancelled)
+                    }
+                }
+
+                self.task = self.devicesProxy.deleteDivice(
+                    accountNumber: tunnelInfo.token,
+                    identifier: tunnelSettings.device.identifier,
+                    retryStrategy: .default
+                ) { completion in
+                    self.queue.async {
+                        handleCompletion(completion)
+                    }
+                }
+            } else {
+                self.createDevice { completion in
+                    self.finish(completion: completion)
                 }
             }
-        } else {
-            setNewAccount(completionHandler: completionHandler)
         }
     }
 
-    private func setNewAccount(completionHandler: @escaping CompletionHandler) {
-        guard let accountToken = accountToken else {
-            logger.debug("Account token is unset.")
+    private func createDevice(completionHandler: @escaping CompletionHandler) {
+        guard let accountNumber = accountNumber else {
+            logger.debug("Account number is unset.")
             completionHandler(.success(()))
             return
         }
 
-        logger.debug("Set new account token.")
+        logger.debug("Create new device...")
 
-        // Check Keychain for leftover settings from previous installation and attempt to remove
-        // previous WirGuard keys before proceeding.
-        switch TunnelSettingsManager.load(searchTerm: .accountToken(accountToken)) {
-        case .success(let keychainEntry):
-            let interfaceSettings = keychainEntry.tunnelSettings.interface
+        let newPrivateKey = PrivateKeyWithMetadata()
 
-            logger.debug("Found leftover tunnel settings in Keychain.")
+        let request = REST.CreateDeviceRequest(
+            publicKey: newPrivateKey.publicKey,
+            hijackDNS: false
+        )
 
-            let publicKeys = [interfaceSettings.publicKey, interfaceSettings.nextPrivateKey?.publicKey]
-                .compactMap { $0 }
+        let handleCompletion = { (_ completion: OperationCompletion<REST.Device, REST.Error>) in
+            switch completion {
+            case .success(let device):
+                self.logger.debug("Created device.")
 
-            deletePublicKeys(publicKeys, accountToken: accountToken) {
-                self.addTunnelSettingsAndPushKey(accountToken: accountToken, completionHandler: completionHandler)
-            }
+                let tunnelSettings = TunnelSettingsV2(
+                    account: StoredAccountData(
+                        number: accountNumber,
+                        expiry: Date() // TODO: obtain account expiry.
+                    ),
+                    device: StoredDeviceData(
+                        creationDate: device.created,
+                        identifier: device.id,
+                        name: device.name,
+                        privateKey: newPrivateKey,
+                        nextPrivateKey: nil,
+                        addresses: [
+                            device.ipv4Address,
+                            device.ipv6Address
+                        ]
+                    ),
+                    relayConstraints: RelayConstraints(),
+                    dnsSettings: DNSSettings()
+                )
 
-            // Explicit return.
-            return
+                self.logger.debug("Write tunnel settings.")
+                do {
+                    try TunnelSettingsManagerV2.writeSettings(tunnelSettings)
+                } catch {
+                    self.logger.error(
+                        chainedError: AnyChainedError(error),
+                        message: "Failed to write tunnel settings."
+                    )
 
-        case .failure(.lookupEntry(.itemNotFound)):
-            break
-
-        case .failure(let error):
-            logger.error(chainedError: error, message: "Failed to read leftover tunnel settings.")
-        }
-
-        addTunnelSettingsAndPushKey(accountToken: accountToken, completionHandler: completionHandler)
-    }
-
-    private func addTunnelSettingsAndPushKey(accountToken: String, completionHandler: @escaping CompletionHandler) {
-        switch addTunnelSettings(accountToken: accountToken) {
-        case .success(let tunnelSettings):
-            self.pushNewAccountKey(
-                accountToken: accountToken,
-                publicKey: tunnelSettings.interface.publicKey,
-                completionHandler: completionHandler
-            )
-
-        case .failure(let error):
-            logger.error(chainedError: error, message: "Failed to add tunnel settings for new account.")
-            completionHandler(.failure(error))
-        }
-    }
-
-    private func addTunnelSettings(accountToken: String) -> Result<TunnelSettingsV1, TunnelManager.Error> {
-        return TunnelSettingsManager.remove(searchTerm: .accountToken(accountToken))
-            .flatMapError { error in
-                if case .removeEntry(.itemNotFound) = error {
-                    return .success(())
-                } else {
-                    return .failure(.removeTunnelSettings(error))
+                    completionHandler(.failure(.addTunnelSettings(error)))
+                    return
                 }
-            }
-            .flatMap { _ in
-                let defaultSettings = TunnelSettingsV1()
 
-                return TunnelSettingsManager.add(configuration: defaultSettings, account: accountToken)
-                    .map { _ in
-                        return defaultSettings
-                    }
-                    .mapError { error in
-                        return .addTunnelSettings(error)
-                    }
-            }
-    }
+                completionHandler(.success(()))
 
-    private func deletePublicKeys(_ publicKeys: [PublicKey], accountToken: String, completionHandler: @escaping () -> Void) {
-        let dispatchGroup = DispatchGroup()
+            case .failure(let error):
+                self.logger.error(chainedError: error, message: "Failed to create a device.")
+                completionHandler(.failure(.createDevice(error)))
 
-        for (index, publicKey) in publicKeys.enumerated() {
-            dispatchGroup.enter()
-            _ = apiProxy.deleteWireguardKey(accountNumber: accountToken, publicKey: publicKey, retryStrategy: .default) { result in
-                self.queue.async {
-                    switch result {
-                    case .success:
-                        self.logger.info("Removed key (\(index)) from server.")
-
-                    case .failure(.unhandledResponse(_, let serverErrorResponse))
-                        where serverErrorResponse?.code == .publicKeyNotFound:
-                        self.logger.debug("Key (\(index)) was not found on server.")
-
-                    case .failure(let error):
-                        self.logger.error(chainedError: error, message: "Failed to delete key (\(index)) on server.")
-
-                    case .cancelled:
-                        self.logger.debug("Cancelled public key deletion.")
-                    }
-
-                    dispatchGroup.leave()
-                }
+            case .cancelled:
+                self.logger.debug("Device creation was cancelled.")
+                completionHandler(.cancelled)
             }
         }
 
-        dispatchGroup.notify(queue: queue) {
-            completionHandler()
+        task = devicesProxy.createDevice(
+            accountNumber: accountNumber,
+            request: request,
+            retryStrategy: .default
+        ) { completion in
+            self.queue.async {
+                handleCompletion(completion)
+            }
         }
     }
 
-    private func deleteKeychainEntryAndVPNConfiguration(accountToken: String, completionHandler: @escaping () -> Void) {
+    private func deleteKeychainEntryAndVPNConfiguration(completionHandler: @escaping (TunnelManager.Error?) -> Void) {
+        // Delete keychain entry.
+        do {
+            try TunnelSettingsManagerV2.deleteSettings()
+            self.logger.debug("Removed tunnel settings.")
+        } catch {
+            if let keychainError = error as? KeychainError, keychainError != .itemNotFound {
+                self.logger.error(
+                    chainedError: AnyChainedError(error),
+                    message: "Failed to remove tunnel settings."
+                )
+                completionHandler(.removeTunnelSettings(error))
+                return
+            }
+        }
+
         // Tell the caller to unsubscribe from VPN status notifications.
         willDeleteVPNConfigurationHandler?()
         willDeleteVPNConfigurationHandler = nil
@@ -190,20 +201,9 @@ class SetAccountOperation: ResultOperation<(), TunnelManager.Error> {
         // Remove tunnel info
         state.tunnelInfo = nil
 
-        // Remove settings from Keychain
-        if case .failure(let error) = TunnelSettingsManager.remove(searchTerm: .accountToken(accountToken)) {
-            // Ignore Keychain errors because that normally means that the Keychain
-            // configuration was already removed and we shouldn't be blocking the
-            // user from logging out
-            logger.error(
-                chainedError: error,
-                message: "Failed to delete old account settings."
-            )
-        }
-
         // Finish immediately if tunnel provider is not set.
         guard let tunnel = state.tunnel else {
-            completionHandler()
+            completionHandler(nil)
             return
         }
 
@@ -220,62 +220,8 @@ class SetAccountOperation: ResultOperation<(), TunnelManager.Error> {
 
                 self.state.setTunnel(nil, shouldRefreshTunnelState: false)
 
-                completionHandler()
+                completionHandler(nil)
             }
-        }
-    }
-
-    private func pushNewAccountKey(accountToken: String, publicKey: PublicKey, completionHandler: @escaping CompletionHandler) {
-        _ = apiProxy.pushWireguardKey(accountNumber: accountToken, publicKey: publicKey, retryStrategy: .default) { result in
-            self.queue.async {
-                switch result {
-                case .success(let associatedAddresses):
-                    self.logger.debug("Pushed new key to server.")
-
-                    self.saveAssociatedAddresses(associatedAddresses, accountToken: accountToken, newPrivateKey: nil, completionHandler: completionHandler)
-
-                case .failure(let error):
-                    self.logger.error(chainedError: error, message: "Failed to push new key to server.")
-
-                    completionHandler(.failure(.pushWireguardKey(error)))
-
-                case .cancelled:
-                    self.logger.debug("Cancelled new key push to server.")
-
-                    completionHandler(.cancelled)
-                }
-            }
-        }
-    }
-
-    private func saveAssociatedAddresses(_ associatedAddresses: REST.WireguardAddressesResponse, accountToken: String, newPrivateKey: PrivateKeyWithMetadata?, completionHandler: @escaping (OperationCompletion<(), TunnelManager.Error>) -> Void) {
-        let saveResult = TunnelSettingsManager.update(searchTerm: .accountToken(accountToken)) { tunnelSettings in
-            tunnelSettings.interface.addresses = [
-                associatedAddresses.ipv4Address,
-                associatedAddresses.ipv6Address
-            ]
-
-            if let newPrivateKey = newPrivateKey {
-                tunnelSettings.interface.privateKey = newPrivateKey
-                tunnelSettings.interface.nextPrivateKey = nil
-            }
-        }
-
-        switch saveResult {
-        case .success(let newTunnelSettings):
-            logger.debug("Saved associated addresses.")
-
-            state.tunnelInfo = TunnelInfo(
-                token: accountToken,
-                tunnelSettings: newTunnelSettings
-            )
-
-            completionHandler(.success(()))
-
-        case .failure(let error):
-            logger.error(chainedError: error, message: "Failed to save associated addresses.")
-
-            completionHandler(.failure(.updateTunnelSettings(error)))
         }
     }
 }

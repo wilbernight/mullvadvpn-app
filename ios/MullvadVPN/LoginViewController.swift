@@ -351,7 +351,7 @@ private extension LoginState {
             case .createAccount(let rpcError), .verifyAccount(let rpcError):
                 return rpcError.errorChainDescription ?? ""
             case .tunnelConfiguration(let error):
-                if case .pushWireguardKey(let pushError) = error {
+                if case .createDevice(let pushError) = error {
                     switch pushError {
                     case .network(let urlError):
                         return String(
