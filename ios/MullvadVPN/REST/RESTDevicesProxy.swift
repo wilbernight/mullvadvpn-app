@@ -282,7 +282,7 @@ extension REST {
                     requestBuilder.setAuthorization(authorization)
 
                     let request = RotateDeviceKeyRequest(
-                        pubkey: publicKey.base64Key
+                        publicKey: publicKey
                     )
                     try requestBuilder.setHTTPBody(value: request)
 
@@ -318,17 +318,34 @@ extension REST {
     }
 
     struct CreateDeviceRequest: Encodable {
-        let pubkey: String
+        let publicKey: PublicKey
         let hijackDNS: Bool
 
         private enum CodingKeys: String, CodingKey {
             case hijackDNS = "hijackDns"
-            case pubkey
+            case publicKey = "pubkey"
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+
+            try container.encode(publicKey.base64Key, forKey: .publicKey)
+            try container.encode(hijackDNS, forKey: .hijackDNS)
         }
     }
 
     fileprivate struct RotateDeviceKeyRequest: Encodable {
-        let pubkey: String
+        let publicKey: PublicKey
+
+        private enum CodingKeys: String, CodingKey {
+            case publicKey = "pubkey"
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+
+            try container.encode(publicKey.base64Key, forKey: .publicKey)
+        }
     }
 
     struct Device: Decodable {
