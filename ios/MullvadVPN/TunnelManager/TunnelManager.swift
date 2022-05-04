@@ -599,31 +599,36 @@ final class TunnelManager: TunnelManagerStateDelegate {
             })
     }
 
-    private func scheduleTunnelSettingsUpdate(taskName: String, modificationBlock: @escaping (inout TunnelSettingsV1) -> Void, completionHandler: @escaping (TunnelManager.Error?) -> Void) {
-        let operation = SetTunnelSettingsOperation(
-            queue: stateQueue,
-            state: state,
-            modificationBlock: modificationBlock,
-            completionHandler: { [weak self] completion in
-                guard let self = self else { return }
+    private func scheduleTunnelSettingsUpdate(taskName: String, modificationBlock: @escaping (inout TunnelSettingsV2) -> Void, completionHandler: @escaping (TunnelManager.Error?) -> Void) {
+        let operation = ResultBlockOperation<Void, TunnelManager.Error> { operation in
+            self.stateQueue.async {
+                guard var tunnelSettings = self.tunnelInfo?.tunnelSettings else {
+                    operation.finish(completion: .failure(.unsetAccount))
+                    return
+                }
 
-                dispatchPrecondition(condition: .onQueue(self.stateQueue))
+                do {
+                    modificationBlock(&tunnelSettings)
 
-                switch completion {
-                case .success:
+                    try TunnelSettingsManagerV2.writeSettings(tunnelSettings)
+
+                    self.state.tunnelInfo?.tunnelSettings = tunnelSettings
+
                     self.reconnectTunnel(completionHandler: nil)
 
-                case .failure(let error):
-                    self.logger.error(chainedError: error, message: "Failed to set tunnel settings.")
+                    operation.finish(completion: .success(()))
+                } catch {
+                    self.logger.error(chainedError: AnyChainedError(error), message: "Failed to set tunnel settings.")
 
-                case .cancelled:
-                    break
+                    operation.finish(completion: .failure(.updateTunnelSettings(error)))
                 }
+            }
+        }
 
-                DispatchQueue.main.async {
-                    completionHandler(completion.error)
-                }
-            })
+        operation.completionQueue = .main
+        operation.completionHandler = { completion in
+            completionHandler(completion.error)
+        }
 
         let backgroundTaskIdentifier = UIApplication.shared.beginBackgroundTask(withName: taskName) {
             operation.cancel()
