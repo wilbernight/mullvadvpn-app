@@ -156,14 +156,6 @@ extension TunnelManager.Error: DisplayChainedError {
                 comment: ""
             )
 
-        case .migrateTunnelSettings(_):
-            return NSLocalizedString(
-                "MIGRATE_TUNNEL_SETTINGS_ERROR",
-                tableName: "TunnelManager",
-                value: "Failed to migrate tunnel settings",
-                comment: ""
-            )
-
         case .pushWireguardKey(let restError):
             let reason = restError.errorChainDescription ?? ""
             var message = String(

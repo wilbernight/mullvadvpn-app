@@ -114,7 +114,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                     // TODO: avoid throwing fatal error and show the problem report UI instead.
                     fatalError(error.displayChain(message: "Failed to load tunnels"))
 
-                case .migrateTunnelSettings(_), .readTunnelSettings(_):
+                case .readTunnelSettings(_):
                     // Forget that user was logged in since tunnel settings are likely corrupt
                     // or missing.
                     Account.shared.forget {
