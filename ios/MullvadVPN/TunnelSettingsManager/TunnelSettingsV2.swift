@@ -9,6 +9,7 @@
 import Foundation
 import struct Network.IPv4Address
 import class WireGuardKitTypes.PublicKey
+import class WireGuardKitTypes.PrivateKey
 import struct WireGuardKitTypes.IPAddressRange
 
 struct StoredAccountData: Codable, Equatable {
@@ -28,17 +29,17 @@ struct StoredDeviceData: Codable, Equatable {
 
     /// Device name.
     var name: String
+}
+
+struct InterfaceData: Codable, Equatable {
+    /// Private key creation date.
+    var creationDate: Date
 
     /// Private key.
-    var privateKey: PrivateKeyWithMetadata
-
-    /// Returns public key derived from private key.
-    var publicKey: PublicKey {
-        return privateKey.publicKeyWithMetadata.publicKey
-    }
+    var privateKey: PrivateKey
 
     /// Next private key.
-    var nextPrivateKey: PrivateKeyWithMetadata?
+    var nextPrivateKey: PrivateKey?
 
     /// IP addresses assigned for tunnel interface.
     var addresses: [IPAddressRange]
@@ -49,7 +50,10 @@ struct TunnelSettingsV2: Codable, Equatable {
     var account: StoredAccountData
 
     /// Device data.
-    var device: StoredDeviceData
+    var device: StoredDeviceData?
+
+    /// Interface data.
+    var interface: InterfaceData
 
     /// Relay constraints.
     var relayConstraints: RelayConstraints
