@@ -124,6 +124,17 @@ impl Command for Relay {
                             )
                     )
                     .subcommand(
+                        clap::App::new("ownership")
+                            .about("Filters relays based on ownership. The 'list' \
+                                   command shows the available relays and whether they're rented.")
+                            .arg(
+                                clap::Arg::new("ownership")
+                                .help("Ownership preference, or 'any' for no preference.")
+                                .possible_values(&["any", "owned", "rented"])
+                                .required(true)
+                            )
+                    )
+                    .subcommand(
                         clap::App::new("tunnel")
                             .about("Set tunnel protocol-specific constraints.")
                             .setting(clap::AppSettings::SubcommandRequiredElseHelp)
@@ -226,6 +237,8 @@ impl Relay {
             self.set_hostname(relay_matches).await
         } else if let Some(providers_matches) = matches.subcommand_matches("provider") {
             self.set_providers(providers_matches).await
+        } else if let Some(ownership_matches) = matches.subcommand_matches("ownership") {
+            self.set_ownership(ownership_matches).await
         } else if let Some(matches) = matches.subcommand_matches("tunnel") {
             if let Some(tunnel_matches) = matches.subcommand_matches("openvpn") {
                 self.set_openvpn_constraints(tunnel_matches).await
@@ -476,6 +489,21 @@ impl Relay {
             r#type: Some(types::relay_settings_update::Type::Normal(
                 types::NormalRelaySettingsUpdate {
                     providers: Some(types::ProviderUpdate { providers }),
+                    ..Default::default()
+                },
+            )),
+        })
+        .await
+    }
+
+    async fn set_ownership(&self, matches: &clap::ArgMatches) -> Result<()> {
+        let ownership = parse_ownership_constraint(matches.value_of("ownership").unwrap());
+        self.update_constraints(types::RelaySettingsUpdate {
+            r#type: Some(types::relay_settings_update::Type::Normal(
+                types::NormalRelaySettingsUpdate {
+                    ownership: Some(types::OwnershipUpdate {
+                        ownership: ownership as i32,
+                    }),
                     ..Default::default()
                 },
             )),
@@ -799,5 +827,14 @@ fn parse_transport_port(
         (Constraint::Only(_), Constraint::Any) => Err(Error::InvalidCommand(
             "a transport protocol must be given to select a specific port",
         )),
+    }
+}
+
+pub fn parse_ownership_constraint(constraint: &str) -> types::Ownership {
+    match constraint {
+        "any" => types::Ownership::Any,
+        "owned" => types::Ownership::MullvadOwned,
+        "rented" => types::Ownership::Rented,
+        _ => unreachable!(),
     }
 }

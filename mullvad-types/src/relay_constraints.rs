@@ -185,6 +185,8 @@ pub struct RelayConstraints {
     #[cfg_attr(target_os = "android", jnix(skip))]
     pub providers: Constraint<Providers>,
     #[cfg_attr(target_os = "android", jnix(skip))]
+    pub ownership: Constraint<Ownership>,
+    #[cfg_attr(target_os = "android", jnix(skip))]
     pub tunnel_protocol: Constraint<TunnelType>,
     #[cfg_attr(target_os = "android", jnix(skip))]
     pub wireguard_constraints: WireguardConstraints,
@@ -199,6 +201,7 @@ impl Default for RelayConstraints {
             tunnel_protocol: Constraint::Only(TunnelType::Wireguard),
             location: Constraint::default(),
             providers: Constraint::default(),
+            ownership: Constraint::default(),
             wireguard_constraints: WireguardConstraints::default(),
             openvpn_constraints: OpenVpnConstraints::default(),
         }
@@ -210,6 +213,7 @@ impl RelayConstraints {
         RelayConstraints {
             location: update.location.unwrap_or_else(|| self.location.clone()),
             providers: update.providers.unwrap_or_else(|| self.providers.clone()),
+            ownership: update.ownership.unwrap_or_else(|| self.ownership.clone()),
             tunnel_protocol: update
                 .tunnel_protocol
                 .unwrap_or_else(|| self.tunnel_protocol.clone()),
@@ -526,6 +530,7 @@ pub struct ObfuscationSettings {
 pub struct BridgeConstraints {
     pub location: Constraint<LocationConstraint>,
     pub providers: Constraint<Providers>,
+    pub ownership: Constraint<Ownership>,
 }
 
 impl fmt::Display for BridgeConstraints {
@@ -619,6 +624,8 @@ pub struct RelayConstraintsUpdate {
     pub location: Option<Constraint<LocationConstraint>>,
     #[cfg_attr(target_os = "android", jnix(default))]
     pub providers: Option<Constraint<Providers>>,
+    #[cfg_attr(target_os = "android", jnix(default))]
+    pub ownership: Option<Constraint<Ownership>>,
     #[cfg_attr(target_os = "android", jnix(default))]
     pub tunnel_protocol: Option<Constraint<TunnelType>>,
     #[cfg_attr(target_os = "android", jnix(default))]
