@@ -329,6 +329,15 @@ pub enum Ownership {
     Rented,
 }
 
+impl Match<Relay> for Ownership {
+    fn matches(&self, relay: &Relay) -> bool {
+        match self {
+            Ownership::MullvadOwned => relay.owned,
+            Ownership::Rented => !relay.owned,
+        }
+    }
+}
+
 /// Limits the set of [`crate::relay_list::Relay`]s used by a `RelaySelector` based on
 /// provider.
 pub type Provider = String;
@@ -574,6 +583,7 @@ impl fmt::Display for BridgeState {
 pub struct InternalBridgeConstraints {
     pub location: Constraint<LocationConstraint>,
     pub providers: Constraint<Providers>,
+    pub ownership: Constraint<Ownership>,
     pub transport_protocol: Constraint<TransportProtocol>,
 }
 
