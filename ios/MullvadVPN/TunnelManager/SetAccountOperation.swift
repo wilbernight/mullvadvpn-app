@@ -81,7 +81,7 @@ class SetAccountOperation: ResultOperation<(), TunnelManager.Error> {
                     }
                 }
 
-                self.task = self.devicesProxy.deleteDivice(
+                self.task = self.devicesProxy.deleteDevice(
                     accountNumber: tunnelInfo.token,
                     identifier: tunnelSettings.device.identifier,
                     retryStrategy: .default
