@@ -254,8 +254,14 @@ impl fmt::Display for RelayConstraints {
         }
         write!(f, " using ")?;
         match self.providers {
-            Constraint::Any => write!(f, "any provider"),
-            Constraint::Only(ref constraint) => constraint.fmt(f),
+            Constraint::Any => write!(f, "any provider")?,
+            Constraint::Only(ref constraint) => constraint.fmt(f)?,
+        }
+        match self.ownership {
+            Constraint::Any => Ok(()),
+            Constraint::Only(ref constraint) => {
+                write!(f, " and {}", constraint)
+            }
         }
     }
 }
@@ -334,6 +340,15 @@ impl Match<Relay> for Ownership {
         match self {
             Ownership::MullvadOwned => relay.owned,
             Ownership::Rented => !relay.owned,
+        }
+    }
+}
+
+impl fmt::Display for Ownership {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        match self {
+            Ownership::MullvadOwned => write!(f, "Mullvad-owned servers"),
+            Ownership::Rented => write!(f, "rented servers"),
         }
     }
 }
@@ -550,8 +565,14 @@ impl fmt::Display for BridgeConstraints {
         }
         write!(f, " using ")?;
         match self.providers {
-            Constraint::Any => write!(f, "any provider"),
-            Constraint::Only(ref constraint) => constraint.fmt(f),
+            Constraint::Any => write!(f, "any provider")?,
+            Constraint::Only(ref constraint) => constraint.fmt(f)?,
+        }
+        match self.ownership {
+            Constraint::Any => Ok(()),
+            Constraint::Only(ref constraint) => {
+                write!(f, " and {}", constraint)
+            }
         }
     }
 }
