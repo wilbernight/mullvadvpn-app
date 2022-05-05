@@ -131,7 +131,7 @@ final class TunnelManager: TunnelManagerStateDelegate {
         guard self.isRunningPeriodicPrivateKeyRotation else { return }
 
         if let tunnelInfo = self.state.tunnelInfo {
-            let creationDate = tunnelInfo.tunnelSettings.device.privateKey.creationDate
+            let creationDate = tunnelInfo.tunnelSettings.interface.creationDate
             let scheduleDate = Date(timeInterval: TunnelManagerConfiguration.privateKeyRotationInterval, since: creationDate)
 
             schedulePrivateKeyRotationTimer(scheduleDate)
@@ -574,8 +574,8 @@ final class TunnelManager: TunnelManagerStateDelegate {
         return SetAccountOperation(
             queue: stateQueue,
             state: state,
-            apiProxy: apiProxy,
-            accountToken: accountToken,
+            devicesProxy: devicesProxy,
+            accountNumber: accountNumber,
             willDeleteVPNConfigurationHandler: { [weak self] in
                 guard let self = self else { return }
 
@@ -761,8 +761,11 @@ extension TunnelManager {
     /// Schedule background task relative to the private key creation date.
     func scheduleBackgroundTask() -> Result<(), TunnelManager.Error> {
         if let tunnelInfo = self.state.tunnelInfo {
-            let creationDate = tunnelInfo.tunnelSettings.device.privateKey.creationDate
-            let beginDate = Date(timeInterval: TunnelManagerConfiguration.privateKeyRotationInterval, since: creationDate)
+            let creationDate = tunnelInfo.tunnelSettings.interface.creationDate
+            let beginDate = Date(
+                timeInterval: TunnelManagerConfiguration.privateKeyRotationInterval,
+                since: creationDate
+            )
 
             return submitBackgroundTask(at: beginDate)
         } else {

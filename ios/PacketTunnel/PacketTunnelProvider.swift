@@ -491,10 +491,12 @@ extension PacketTunnelConfiguration {
             return peerConfig
         }
 
-        var interfaceConfig = InterfaceConfiguration(privateKey: tunnelSettings.device.privateKey.privateKey)
+        var interfaceConfig = InterfaceConfiguration(
+            privateKey: tunnelSettings.interface.privateKey
+        )
         interfaceConfig.listenPort = 0
         interfaceConfig.dns = dnsServers.map { DNSServer(address: $0) }
-        interfaceConfig.addresses = tunnelSettings.device.addresses
+        interfaceConfig.addresses = tunnelSettings.interface.addresses
 
         return TunnelConfiguration(name: nil, interface: interfaceConfig, peers: peerConfigs)
     }

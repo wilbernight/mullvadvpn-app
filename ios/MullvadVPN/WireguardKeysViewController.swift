@@ -11,10 +11,10 @@ import UIKit
 import Logging
 
 /// A UI refresh interval for the public key creation date (in seconds)
-private let kCreationDateRefreshInterval = Int(60)
+private let creationDateRefreshInterval = Int(60)
 
 /// A maximum number of characters to display out of the entire public key representation
-private let kDisplayPublicKeyMaxLength = 20
+private let displayPublicKeyMaxLength = 20
 
 private enum WireguardKeysViewState {
     case `default`
@@ -88,7 +88,7 @@ class WireguardKeysViewController: UIViewController, TunnelObserver {
     }
 
     private func startPublicKeyPeriodicUpdate() {
-        let interval = DispatchTimeInterval.seconds(kCreationDateRefreshInterval)
+        let interval = DispatchTimeInterval.seconds(creationDateRefreshInterval)
         let timerSource = DispatchSource.makeTimerSource(queue: .main)
         timerSource.setEventHandler { [weak self] () -> Void in
             self?.updatePublicKey(tunnelSettings: TunnelManager.shared.tunnelInfo?.tunnelSettings, animated: true)
@@ -118,9 +118,11 @@ class WireguardKeysViewController: UIViewController, TunnelObserver {
     private func copyPublicKey() {
         guard let tunnelInfo = TunnelManager.shared.tunnelInfo else { return }
 
-        let metadata = tunnelInfo.tunnelSettings.device.privateKey.publicKeyWithMetadata
-
-        UIPasteboard.general.string = metadata.stringRepresentation()
+        UIPasteboard.general.string = tunnelInfo.tunnelSettings
+            .interface
+            .privateKey
+            .publicKey
+            .base64Key
 
         setPublicKeyTitle(
             string: NSLocalizedString("COPIED_TO_PASTEBOARD_LABEL", tableName: "WireguardKeys", comment: ""),
@@ -162,12 +164,15 @@ class WireguardKeysViewController: UIViewController, TunnelObserver {
     }
 
     private func updatePublicKey(tunnelSettings: TunnelSettingsV2?, animated: Bool) {
-        if let publicKey = tunnelSettings?.device.privateKey.publicKeyWithMetadata {
-            let displayKey = publicKey
-                .stringRepresentation(maxLength: kDisplayPublicKeyMaxLength)
+        if let interfaceData = tunnelSettings?.interface {
+            let displayKey = interfaceData.privateKey
+                .publicKey
+                .base64Key
+                .prefix(displayPublicKeyMaxLength)
+                .appending("...")
 
             setPublicKeyTitle(string: displayKey, animated: animated)
-            updateCreationDateLabel(with: publicKey.creationDate)
+            updateCreationDateLabel(with: interfaceData.creationDate)
         } else {
             setPublicKeyTitle(string: "-", animated: animated)
             contentView.creationRowView.value = "-"
@@ -217,7 +222,7 @@ class WireguardKeysViewController: UIViewController, TunnelObserver {
 
         verifyKeyCancellable = apiProxy.getWireguardKey(
             accountNumber: tunnelInfo.token,
-            publicKey: tunnelInfo.tunnelSettings.device.publicKey,
+            publicKey: tunnelInfo.tunnelSettings.interface.privateKey.publicKey,
             retryStrategy: .default
         ) { [weak self] result in
             guard let self = self else { return }

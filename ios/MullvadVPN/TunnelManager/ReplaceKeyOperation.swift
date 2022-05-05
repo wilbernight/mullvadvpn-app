@@ -8,6 +8,7 @@
 
 import Foundation
 import Logging
+import class WireGuardKitTypes.PrivateKey
 
 class ReplaceKeyOperation: ResultOperation<TunnelManager.KeyRotationResult, TunnelManager.Error> {
     private let queue: DispatchQueue
@@ -90,7 +91,7 @@ class ReplaceKeyOperation: ResultOperation<TunnelManager.KeyRotationResult, Tunn
             }
 
             if let rotationInterval = self.rotationInterval {
-                let creationDate = tunnelInfo.tunnelSettings.device.privateKey.creationDate
+                let creationDate = tunnelInfo.tunnelSettings.interface.creationDate
                 let nextRotationDate = creationDate.addingTimeInterval(rotationInterval)
 
                 if nextRotationDate > Date() {
@@ -105,21 +106,21 @@ class ReplaceKeyOperation: ResultOperation<TunnelManager.KeyRotationResult, Tunn
                 self.logger.debug("Rotate private key right away.")
             }
 
-            let newPrivateKey: PrivateKeyWithMetadata
+            let newPrivateKey: PrivateKey
 
-            if let nextPrivateKey = tunnelInfo.tunnelSettings.device.nextPrivateKey {
+            if let nextPrivateKey = tunnelInfo.tunnelSettings.interface.nextPrivateKey {
                 newPrivateKey = nextPrivateKey
 
                 self.logger.debug("Next private key is already created.")
             } else {
-                newPrivateKey = PrivateKeyWithMetadata()
+                newPrivateKey = PrivateKey()
 
                 self.logger.debug("Create next private key.")
 
                 do {
                     var newTunnelSettings = tunnelInfo.tunnelSettings
 
-                    newTunnelSettings.device.nextPrivateKey = newPrivateKey
+                    newTunnelSettings.interface.nextPrivateKey = newPrivateKey
 
                     try TunnelSettingsManagerV2.writeSettings(newTunnelSettings)
 
@@ -136,9 +137,11 @@ class ReplaceKeyOperation: ResultOperation<TunnelManager.KeyRotationResult, Tunn
 
             self.logger.debug("Replacing old key with new key on server...")
 
+            // TODO: handle missing device data
+
             self.task = self.devicesProxy.rotateDeviceKey(
                 accountNumber: tunnelInfo.tunnelSettings.account.number,
-                identifier: tunnelInfo.tunnelSettings.device.identifier,
+                identifier: tunnelInfo.tunnelSettings.device!.identifier,
                 publicKey: newPrivateKey.publicKey,
                 retryStrategy: .default
             ) { completion in
@@ -149,9 +152,10 @@ class ReplaceKeyOperation: ResultOperation<TunnelManager.KeyRotationResult, Tunn
 
                         do {
                             var tunnelSettings = tunnelInfo.tunnelSettings
-                            tunnelSettings.device.privateKey = newPrivateKey
-                            tunnelSettings.device.nextPrivateKey = nil
-                            tunnelSettings.device.addresses = [
+                            tunnelSettings.interface.creationDate = Date()
+                            tunnelSettings.interface.privateKey = newPrivateKey
+                            tunnelSettings.interface.nextPrivateKey = nil
+                            tunnelSettings.interface.addresses = [
                                 associatedAddresses.ipv4Address,
                                 associatedAddresses.ipv6Address
                             ]

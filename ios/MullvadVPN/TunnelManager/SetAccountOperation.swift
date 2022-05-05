@@ -8,6 +8,7 @@
 
 import Foundation
 import class WireGuardKitTypes.PublicKey
+import class WireGuardKitTypes.PrivateKey
 import Logging
 
 class SetAccountOperation: ResultOperation<(), TunnelManager.Error> {
@@ -81,9 +82,11 @@ class SetAccountOperation: ResultOperation<(), TunnelManager.Error> {
                     }
                 }
 
+                // TODO: handle missing device data.
+
                 self.task = self.devicesProxy.deleteDevice(
                     accountNumber: tunnelInfo.token,
-                    identifier: tunnelSettings.device.identifier,
+                    identifier: tunnelSettings.device!.identifier,
                     retryStrategy: .default
                 ) { completion in
                     self.queue.async {
@@ -127,8 +130,11 @@ class SetAccountOperation: ResultOperation<(), TunnelManager.Error> {
                     device: StoredDeviceData(
                         creationDate: device.created,
                         identifier: device.id,
-                        name: device.name,
-                        privateKey: newPrivateKey,
+                        name: device.name
+                    ),
+                    interface: InterfaceData(
+                        creationDate: Date(),
+                        privateKey: PrivateKey(),
                         nextPrivateKey: nil,
                         addresses: [
                             device.ipv4Address,
