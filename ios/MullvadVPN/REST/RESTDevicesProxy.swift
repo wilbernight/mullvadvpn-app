@@ -192,7 +192,7 @@ extension REST {
         /// Delete device by identifier.
         /// The completion handler will receive `true` if device is successfully removed,
         /// otherwise `false` if device is not found or already removed.
-        func deleteDivice(
+        func deleteDevice(
             accountNumber: String,
             identifier: String,
             retryStrategy: REST.RetryStrategy,
