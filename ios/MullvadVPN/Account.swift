@@ -112,10 +112,8 @@ class Account {
                             self.observerList.forEach { observer in
                                 observer.account(self, didLoginWithToken: response.token, expiry: response.expires)
                             }
-
                             completionHandler(.success(response))
                         }
-
                         operation.finish()
                     }
 
@@ -234,7 +232,7 @@ class Account {
     }
 
     private func setupTunnel(accountToken: String, expiry: Date, completionHandler: @escaping (Account.Error?) -> Void) {
-        TunnelManager.shared.setAccount(accountToken: accountToken) { error in
+        TunnelManager.shared.setAccount(accountNumber: accountToken) { error in
             dispatchPrecondition(condition: .onQueue(.main))
 
             if let error = error {

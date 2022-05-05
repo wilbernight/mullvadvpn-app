@@ -310,8 +310,8 @@ final class TunnelManager: TunnelManagerStateDelegate {
         operationQueue.addOperation(operation)
     }
 
-    func setAccount(accountToken: String, completionHandler: @escaping (TunnelManager.Error?) -> Void) {
-        let operation = makeSetAccountOperation(accountToken: accountToken) { completion in
+    func setAccount(accountNumber: String, completionHandler: @escaping (TunnelManager.Error?) -> Void) {
+        let operation = makeSetAccountOperation(accountNumber: accountNumber) { completion in
             DispatchQueue.main.async {
                 completionHandler(completion.error)
             }
@@ -331,7 +331,7 @@ final class TunnelManager: TunnelManagerStateDelegate {
     }
 
     func unsetAccount(completionHandler: @escaping () -> Void) {
-        let operation = makeSetAccountOperation(accountToken: nil) { _ in
+        let operation = makeSetAccountOperation(accountNumber: nil) { _ in
             DispatchQueue.main.async {
                 completionHandler()
             }
@@ -570,7 +570,7 @@ final class TunnelManager: TunnelManagerStateDelegate {
         }
     }
 
-    private func makeSetAccountOperation(accountToken: String?, completionHandler: @escaping (OperationCompletion<(), TunnelManager.Error>) -> Void) -> Operation {
+    private func makeSetAccountOperation(accountNumber: String?, completionHandler: @escaping (OperationCompletion<(), TunnelManager.Error>) -> Void) -> Operation {
         return SetAccountOperation(
             queue: stateQueue,
             state: state,
