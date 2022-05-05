@@ -674,12 +674,17 @@ impl Relay {
                         (false, true) => "WireGuard",
                         _ => unreachable!("Bug in relay filtering earlier on"),
                     };
+                    let ownership = if relay.owned {
+                        "Mullvad-owned"
+                    } else {
+                        "rented"
+                    };
                     let mut addresses = vec![&relay.ipv4_addr_in];
                     if !relay.ipv6_addr_in.is_empty() {
                         addresses.push(&relay.ipv6_addr_in);
                     }
                     println!(
-                        "\t\t{} ({}) - {}, hosted by {}",
+                        "\t\t{} ({}) - {}, hosted by {} ({ownership})",
                         relay.hostname,
                         addresses.iter().join(", "),
                         support_msg,

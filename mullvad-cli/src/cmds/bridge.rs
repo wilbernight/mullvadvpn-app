@@ -468,8 +468,13 @@ impl Bridge {
                     city.name, city.code, city.latitude, city.longitude
                 );
                 for relay in &city.relays {
+                    let ownership = if relay.owned {
+                        "Mullvad-owned"
+                    } else {
+                        "rented"
+                    };
                     println!(
-                        "\t\t{} ({}) - hosted by {}",
+                        "\t\t{} ({}) - hosted by {} ({ownership})",
                         relay.hostname, relay.ipv4_addr_in, relay.provider
                     );
                 }
