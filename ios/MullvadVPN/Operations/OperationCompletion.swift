@@ -71,4 +71,19 @@ enum OperationCompletion<Success, Failure: Error> {
             return .cancelled
         }
     }
+
+    func tryMap<NewSuccess>(_ block: (Success) throws -> NewSuccess) -> OperationCompletion<NewSuccess, Error> {
+        switch self {
+        case .success(let value):
+            do {
+                return .success(try block(value))
+            } catch {
+                return .failure(error)
+            }
+        case .failure(let error):
+            return .failure(error)
+        case .cancelled:
+            return .cancelled
+        }
+    }
 }
