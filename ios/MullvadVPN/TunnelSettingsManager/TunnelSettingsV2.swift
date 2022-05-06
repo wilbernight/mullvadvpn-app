@@ -13,10 +13,13 @@ import class WireGuardKitTypes.PrivateKey
 import struct WireGuardKitTypes.IPAddressRange
 
 struct StoredAccountData: Codable, Equatable {
-    /// Mullvad account number.
+    /// Account identifier.
+    var identifier: String
+
+    /// Account number.
     var number: String
 
-    /// Mullvad account expiry.
+    /// Account expiry.
     var expiry: Date
 }
 
