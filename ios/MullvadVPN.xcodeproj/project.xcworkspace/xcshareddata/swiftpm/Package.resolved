@@ -14,8 +14,8 @@
         "package": "WireGuardKit",
         "repositoryURL": "https://github.com/mullvad/wireguard-apple.git",
         "state": {
-          "branch": "mullvad-master",
-          "revision": "736a4bb5baba4e2c70686f59416d50c3b06e8424",
+          "branch": null,
+          "revision": "b91cadfb7927edb082ca1283a416f042c6bb0f6e",
           "version": null
         }
       }
