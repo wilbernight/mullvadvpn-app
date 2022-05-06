@@ -10,14 +10,20 @@ import Foundation
 import Logging
 
 class LoadTunnelConfigurationOperation: ResultOperation<(), TunnelManager.Error> {
+    private let logger = Logger(label: "TunnelManager.LoadTunnelConfigurationOperation")
     private let queue: DispatchQueue
     private let state: TunnelManager.State
+    private let accountsProxy: REST.AccountsProxy
 
-    private let logger = Logger(label: "TunnelManager.LoadTunnelConfigurationOperation")
-
-    init(queue: DispatchQueue, state: TunnelManager.State, completionHandler: @escaping CompletionHandler) {
+    init(
+        queue: DispatchQueue,
+        state: TunnelManager.State,
+        accountsProxy: REST.AccountsProxy,
+        completionHandler: @escaping CompletionHandler
+    ) {
         self.queue = queue
         self.state = state
+        self.accountsProxy = accountsProxy
 
         super.init(completionQueue: queue, completionHandler: completionHandler)
     }
@@ -52,46 +58,60 @@ class LoadTunnelConfigurationOperation: ResultOperation<(), TunnelManager.Error>
             state.setTunnel(tunnel, shouldRefreshTunnelState: true)
 
             finish(completion: .success(()))
-        } catch let settingsError {
+        } catch .itemNotFound as KeychainError {
+            logger.debug("Tunnel settings not found in Keychain.")
+
             state.tunnelInfo = nil
             state.setTunnel(nil, shouldRefreshTunnelState: true)
 
-            if case .some(.itemNotFound) = settingsError as? KeychainError {
-                logger.debug("Tunnel settings not found in Keychain.")
+            // TODO: perform migration
 
-                if let tunnelProvider = tunnelProvider {
-                    removeOrphanedTunnel(tunnelProvider: tunnelProvider) { error in
-                        self.finish(completion: error.map { .failure($0) } ?? .success(()))
-                    }
-                } else {
-                    finish(completion: .success(()))
+            if let tunnelProvider = tunnelProvider {
+                removeOrphanedTunnel(tunnelProvider: tunnelProvider) { error in
+                    self.finish(completion: error.map { .failure($0) } ?? .success(()))
                 }
             } else {
-                if let decodingError = settingsError as? DecodingError {
-                    do {
-                        logger.error(
-                            chainedError: AnyChainedError(decodingError),
-                            message: "Cannot decode tunnel settings. Will attempt to delete them from Keychain."
-                        )
+                finish(completion: .success(()))
+            }
+        } catch let error as DecodingError {
+            state.tunnelInfo = nil
+            state.setTunnel(nil, shouldRefreshTunnelState: true)
 
-                        try TunnelSettingsManagerV2.deleteSettings()
-                    } catch {
-                        logger.error(
-                            chainedError: AnyChainedError(error),
-                            message: "Failed to delete tunnel settings from Keychain."
-                        )
-                    }
+            do {
+                logger.error(
+                    chainedError: AnyChainedError(error),
+                    message: "Cannot decode tunnel settings. Will attempt to delete them from Keychain."
+                )
+
+                try TunnelSettingsManagerV2.deleteSettings()
+            } catch {
+                logger.error(
+                    chainedError: AnyChainedError(error),
+                    message: "Failed to delete tunnel settings from Keychain."
+                )
+            }
+
+            let returnError: TunnelManager.Error = .readTunnelSettings(error)
+
+            if let tunnelProvider = tunnelProvider {
+                removeOrphanedTunnel(tunnelProvider: tunnelProvider) { _ in
+                    self.finish(completion: .failure(returnError))
                 }
+            } else {
+                finish(completion: .failure(returnError))
+            }
+        } catch {
+            state.tunnelInfo = nil
+            state.setTunnel(nil, shouldRefreshTunnelState: true)
 
-                let returnError: TunnelManager.Error = .readTunnelSettings(settingsError)
+            let returnError: TunnelManager.Error = .readTunnelSettings(error)
 
-                if let tunnelProvider = tunnelProvider {
-                    removeOrphanedTunnel(tunnelProvider: tunnelProvider) { _ in
-                        self.finish(completion: .failure(returnError))
-                    }
-                } else {
-                    finish(completion: .failure(returnError))
+            if let tunnelProvider = tunnelProvider {
+                removeOrphanedTunnel(tunnelProvider: tunnelProvider) { _ in
+                    self.finish(completion: .failure(returnError))
                 }
+            } else {
+                finish(completion: .failure(returnError))
             }
         }
     }

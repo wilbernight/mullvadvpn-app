@@ -183,8 +183,7 @@ final class TunnelManager: TunnelManagerStateDelegate {
         let operation = LoadTunnelConfigurationOperation(
             queue: stateQueue,
             state: state,
-            accountsProxy: accountsProxy,
-            devicesProxy: devicesProxy
+            accountsProxy: accountsProxy
         ) { [weak self] completion in
             guard let self = self else { return }
 
