@@ -40,10 +40,9 @@ use mullvad_relay_selector::{
 use mullvad_types::{
     account::{AccountData, AccountToken, VoucherSubmission},
     device::{AccountAndDevice, Device, DeviceEvent, DeviceId, RemoveDeviceEvent},
-    endpoint::MullvadEndpoint,
     location::GeoIpLocation,
     relay_constraints::{BridgeSettings, BridgeState, ObfuscationSettings, RelaySettingsUpdate},
-    relay_list::{Relay, RelayList},
+    relay_list::RelayList,
     settings::{DnsOptions, Settings},
     states::{TargetState, TunnelState},
     version::{AppVersion, AppVersionInfo},

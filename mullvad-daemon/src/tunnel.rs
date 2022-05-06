@@ -6,8 +6,7 @@ use std::{
 
 use mullvad_relay_selector::{RelaySelector, SelectedBridge, SelectedObfuscator, SelectedRelay};
 use mullvad_types::{
-    device::DeviceData, endpoint::MullvadEndpoint, location::GeoIpLocation, relay_list::Relay,
-    settings::TunnelOptions,
+    endpoint::MullvadEndpoint, location::GeoIpLocation, relay_list::Relay, settings::TunnelOptions,
 };
 use talpid_core::tunnel_state_machine::TunnelParametersGenerator;
 use talpid_types::{
@@ -19,7 +18,7 @@ use talpid_types::{
 #[cfg(not(target_os = "android"))]
 use talpid_types::net::openvpn;
 
-use crate::device::AccountManagerHandle;
+use crate::device::{AccountManagerHandle, PrivateAccountAndDevice};
 
 #[derive(err_derive::Error, Debug)]
 pub enum Error {
@@ -179,7 +178,11 @@ impl InnerParametersGenerator {
                 });
 
                 Ok(openvpn::TunnelParameters {
-                    config: openvpn::ConnectionConfig::new(endpoint, data.token, "-".to_string()),
+                    config: openvpn::ConnectionConfig::new(
+                        endpoint,
+                        data.account_token,
+                        "-".to_string(),
+                    ),
                     options: self.tunnel_options.openvpn.clone(),
                     generic_options: self.tunnel_options.generic.clone(),
                     proxy: bridge_settings,
@@ -192,10 +195,10 @@ impl InnerParametersGenerator {
             }
             MullvadEndpoint::Wireguard(endpoint) => {
                 let tunnel = wireguard::TunnelConfig {
-                    private_key: data.wg_data.private_key,
+                    private_key: data.device.wg_data.private_key,
                     addresses: vec![
-                        data.wg_data.addresses.ipv4_address.ip().into(),
-                        data.wg_data.addresses.ipv6_address.ip().into(),
+                        data.device.wg_data.addresses.ipv4_address.ip().into(),
+                        data.device.wg_data.addresses.ipv6_address.ip().into(),
                     ],
                 };
 
@@ -227,7 +230,7 @@ impl InnerParametersGenerator {
         }
     }
 
-    async fn device(&self) -> Result<DeviceData, Error> {
+    async fn device(&self) -> Result<PrivateAccountAndDevice, Error> {
         self.account_manager
             .data()
             .await
