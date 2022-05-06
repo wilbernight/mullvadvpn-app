@@ -178,15 +178,6 @@ impl PrivateDeviceEvent {
             PrivateDeviceEvent::Logout | PrivateDeviceEvent::Revoked => None,
         }
     }
-
-    pub fn into_data(self) -> Option<PrivateAccountAndDevice> {
-        match self {
-            PrivateDeviceEvent::Login(data) => Some(data),
-            PrivateDeviceEvent::Updated(data) => Some(data),
-            PrivateDeviceEvent::RotatedKey(data) => Some(data),
-            PrivateDeviceEvent::Logout | PrivateDeviceEvent::Revoked => None,
-        }
-    }
 }
 
 impl Error {
