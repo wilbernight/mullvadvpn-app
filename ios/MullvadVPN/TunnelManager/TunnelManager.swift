@@ -49,6 +49,7 @@ final class TunnelManager: TunnelManagerStateDelegate {
     static let shared: TunnelManager = {
         return TunnelManager(
             apiProxy: REST.ProxyFactory.shared.createAPIProxy(),
+            accountsProxy: REST.ProxyFactory.shared.createAccountsProxy(),
             devicesProxy: REST.ProxyFactory.shared.createDevicesProxy()
         )
     }()
@@ -56,6 +57,7 @@ final class TunnelManager: TunnelManagerStateDelegate {
     // MARK: - Internal variables
 
     private let apiProxy: REST.APIProxy
+    private let accountsProxy: REST.AccountsProxy
     private let devicesProxy: REST.DevicesProxy
 
     private let logger = Logger(label: "TunnelManager")
@@ -84,8 +86,9 @@ final class TunnelManager: TunnelManagerStateDelegate {
         return state.tunnelStatus.state
     }
 
-    private init(apiProxy: REST.APIProxy, devicesProxy: REST.DevicesProxy) {
+    private init(apiProxy: REST.APIProxy, accountsProxy: REST.AccountsProxy, devicesProxy: REST.DevicesProxy) {
         self.apiProxy = apiProxy
+        self.accountsProxy = accountsProxy
         self.devicesProxy = devicesProxy
         self.state = TunnelManager.State(queue: stateQueue)
         self.state.delegate = self
@@ -177,7 +180,12 @@ final class TunnelManager: TunnelManagerStateDelegate {
     // MARK: - Public methods
 
     func loadConfiguration(completionHandler: @escaping (TunnelManager.Error?) -> Void) {
-        let operation = LoadTunnelConfigurationOperation(queue: stateQueue, state: state) { [weak self] completion in
+        let operation = LoadTunnelConfigurationOperation(
+            queue: stateQueue,
+            state: state,
+            accountsProxy: accountsProxy,
+            devicesProxy: devicesProxy
+        ) { [weak self] completion in
             guard let self = self else { return }
 
             dispatchPrecondition(condition: .onQueue(self.stateQueue))
