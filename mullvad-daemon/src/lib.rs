@@ -78,6 +78,8 @@ use talpid_types::{
     tunnel::{ErrorStateCause, ParameterGenerationError, TunnelStateTransition},
     ErrorExt,
 };
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+use tokio::fs;
 use tokio::io;
 
 /// Delay between generating a new WireGuard key and reconnecting
