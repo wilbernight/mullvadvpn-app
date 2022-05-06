@@ -96,7 +96,6 @@ extension REST {
 
     struct AccountData: Decodable {
         let id: String
-        let number: String
         let expiry: Date
         let maxPorts: Int
         let canAddPorts: Bool
