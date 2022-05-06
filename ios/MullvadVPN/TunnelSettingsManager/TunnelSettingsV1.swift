@@ -9,7 +9,14 @@
 import Foundation
 import struct Network.IPv4Address
 import class WireGuardKitTypes.PublicKey
+import class WireGuardKitTypes.PrivateKey
 import struct WireGuardKitTypes.IPAddressRange
+
+/// A struct that holds the configuration passed via `NETunnelProviderProtocol`.
+struct TunnelSettingsV1: Codable, Equatable {
+    var relayConstraints = RelayConstraints()
+    var interface = InterfaceSettings()
+}
 
 /// A struct that holds a tun interface configuration.
 struct InterfaceSettings: Codable, Equatable {
@@ -19,15 +26,17 @@ struct InterfaceSettings: Codable, Equatable {
     var addresses: [IPAddressRange]
     var dnsSettings: DNSSettings
 
-    var publicKey: PublicKey {
-        return privateKey.publicKeyWithMetadata.publicKey
-    }
-
     private enum CodingKeys: String, CodingKey {
         case privateKey, nextPrivateKey, addresses, dnsSettings
     }
 
-    init(privateKey: PrivateKeyWithMetadata = PrivateKeyWithMetadata(), nextPrivateKey: PrivateKeyWithMetadata? = nil, addresses: [IPAddressRange] = [], dnsSettings: DNSSettings = DNSSettings()) {
+    init(
+        privateKey: PrivateKeyWithMetadata = PrivateKeyWithMetadata(),
+        nextPrivateKey: PrivateKeyWithMetadata? = nil,
+        addresses: [IPAddressRange] = [],
+        dnsSettings: DNSSettings = DNSSettings()
+    )
+    {
         self.privateKey = privateKey
         self.nextPrivateKey = nextPrivateKey
         self.addresses = addresses
@@ -58,8 +67,32 @@ struct InterfaceSettings: Codable, Equatable {
     }
 }
 
-/// A struct that holds the configuration passed via `NETunnelProviderProtocol`.
-struct TunnelSettingsV1: Codable, Equatable {
-    var relayConstraints = RelayConstraints()
-    var interface = InterfaceSettings()
+/// A struct holding a private WireGuard key with associated metadata
+struct PrivateKeyWithMetadata: Equatable, Codable {
+    private enum CodingKeys: String, CodingKey {
+        case privateKey = "privateKeyData", creationDate
+    }
+
+    /// When the key was created
+    let creationDate: Date
+
+    /// Private key
+    let privateKey: PrivateKey
+
+    /// Public key
+    var publicKey: PublicKey {
+        return privateKey.publicKey
+    }
+
+    /// Initialize the new private key
+    init() {
+        privateKey = PrivateKey()
+        creationDate = Date()
+    }
+
+    /// Initialize with the existing private key
+    init(privateKey: PrivateKey, createdAt: Date) {
+        self.privateKey = privateKey
+        creationDate = createdAt
+    }
 }

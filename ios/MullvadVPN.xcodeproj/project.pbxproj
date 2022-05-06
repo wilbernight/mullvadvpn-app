@@ -99,8 +99,6 @@
 		584EBDBD2747C98F00A0C9FD /* NSAttributedString+Markdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 584EBDBC2747C98F00A0C9FD /* NSAttributedString+Markdown.swift */; };
 		5850366825A47AC700A43E93 /* IPAddressRange+Codable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850366725A47AC700A43E93 /* IPAddressRange+Codable.swift */; };
 		5850367F25A481D800A43E93 /* IPAddressRange+Codable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5850366725A47AC700A43E93 /* IPAddressRange+Codable.swift */; };
-		5850368C25A49E2200A43E93 /* PrivateKeyWithMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58C6B35322BB87C4003C19AD /* PrivateKeyWithMetadata.swift */; };
-		5850368D25A49E2200A43E93 /* PrivateKeyWithMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58C6B35322BB87C4003C19AD /* PrivateKeyWithMetadata.swift */; };
 		58554F73280AFA5A00013055 /* RESTAuthenticationProxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58554F72280AFA5A00013055 /* RESTAuthenticationProxy.swift */; };
 		58554F77280AFD5C00013055 /* RESTTaskIdentifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58554F76280AFD5C00013055 /* RESTTaskIdentifier.swift */; };
 		58554F79280B037400013055 /* RESTAccessTokenManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58554F78280B037400013055 /* RESTAccessTokenManager.swift */; };
@@ -503,7 +501,6 @@
 		58BFA5C522A7C97F00A6173D /* RelayCacheTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayCacheTracker.swift; sourceTree = "<group>"; };
 		58BFA5CB22A7CE1F00A6173D /* ApplicationConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationConfiguration.swift; sourceTree = "<group>"; };
 		58C3A4B122456F1A00340BDB /* AccountInputGroupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountInputGroupView.swift; sourceTree = "<group>"; };
-		58C6B35322BB87C4003C19AD /* PrivateKeyWithMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivateKeyWithMetadata.swift; sourceTree = "<group>"; };
 		58CB0EDF24B86751001EF0D8 /* RESTAPIProxy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RESTAPIProxy.swift; sourceTree = "<group>"; };
 		58CC40EE24A601900019D96E /* ObserverList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObserverList.swift; sourceTree = "<group>"; };
 		58CCA00F224249A1004F3011 /* ConnectViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectViewController.swift; sourceTree = "<group>"; };
@@ -928,7 +925,6 @@
 				587EB6732714520600123C75 /* PreferencesDataSourceDelegate.swift */,
 				58ACF6482655365700ACE4B7 /* PreferencesViewController.swift */,
 				587EB671271451E300123C75 /* PreferencesViewModel.swift */,
-				58C6B35322BB87C4003C19AD /* PrivateKeyWithMetadata.swift */,
 				58F8AC0D25D3F8CE002BE0ED /* ProblemReportReviewViewController.swift */,
 				58EF580A25D69D7A00AEBA94 /* ProblemReportSubmissionOverlayView.swift */,
 				58293FAC2510CA58005D0BB5 /* ProblemReportViewController.swift */,
@@ -1388,7 +1384,6 @@
 				584B17AB27637DE40057F3B8 /* ReloadTunnelOperation.swift in Sources */,
 				5820676426E771DB00655B05 /* TunnelManagerError.swift in Sources */,
 				585B4B8726D9098900555C4C /* TunnelErrorNotificationProvider.swift in Sources */,
-				5850368C25A49E2200A43E93 /* PrivateKeyWithMetadata.swift in Sources */,
 				58FEAFB92750DA2F003C1625 /* AddressCache.swift in Sources */,
 				58B67B482602079E008EF58E /* RelaySelector.swift in Sources */,
 				58DF28A52417CB4B00E836B0 /* AppStorePaymentManager.swift in Sources */,
@@ -1487,7 +1482,6 @@
 				585DA89726B0328000B8C587 /* TunnelIPCResponse.swift in Sources */,
 				587C575426D2615F005EF767 /* PacketTunnelOptions.swift in Sources */,
 				58BFA5CD22A7CE1F00A6173D /* ApplicationConfiguration.swift in Sources */,
-				5850368D25A49E2200A43E93 /* PrivateKeyWithMetadata.swift in Sources */,
 				5820675826E652AF00655B05 /* RelayCacheIO.swift in Sources */,
 				584D26C0270C550E004EA533 /* AnyIPAddress.swift in Sources */,
 				5820675726E652A600655B05 /* REST.swift in Sources */,
