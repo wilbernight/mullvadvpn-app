@@ -53,17 +53,15 @@ impl ParametersGenerator {
         account_manager: AccountManagerHandle,
         relay_selector: RelaySelector,
         tunnel_options: TunnelOptions,
-    ) -> Result<Self, Error> {
-        let self_ = Self(Arc::new(Mutex::new(InnerParametersGenerator {
+    ) -> Self {
+        Self(Arc::new(Mutex::new(InnerParametersGenerator {
             tunnel_options,
             relay_selector,
 
             account_manager,
 
             last_generated_relays: None,
-        })));
-
-        Ok(self_)
+        })))
     }
 
     /// Sets the tunnel options to use when generating new tunnel parameters.

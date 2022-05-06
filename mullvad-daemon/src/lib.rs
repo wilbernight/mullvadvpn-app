@@ -97,9 +97,6 @@ pub enum Error {
     #[error(display = "Unable to create RPC client")]
     InitRpcFactory(#[error(source)] mullvad_api::Error),
 
-    #[error(display = "Unable to create tunnel parameters generator")]
-    InitParametersGenerator(#[error(source)] tunnel::Error),
-
     #[error(display = "REST request failed")]
     RestError(#[error(source)] mullvad_api::rest::Error),
 
@@ -683,8 +680,7 @@ where
             relay_selector.clone(),
             settings.tunnel_options.clone(),
         )
-        .await
-        .map_err(Error::InitParametersGenerator)?;
+        .await;
         let (offline_state_tx, offline_state_rx) = mpsc::unbounded();
         #[cfg(target_os = "windows")]
         let (volume_update_tx, volume_update_rx) = mpsc::unbounded();
